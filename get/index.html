@@ -59,9 +59,19 @@
         var clean = u.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20);
         if (clean) {
           var el = document.getElementById('invited');
-          el.innerHTML = '👋 Invited by <b>@' + clean + '</b> — add them once you’re in.';
+          el.innerHTML = '👋 Invited by <b>@' + clean + '</b> — you’ll be connected when you open the app.';
           el.hidden = false;
-          try { localStorage.setItem('repcall_ref', clean); } catch (e) {}
+          // Deferred auto-add on our OWN Supabase (no third party): stash the referral
+          // keyed by a coarse device fingerprint (server IP + platform + tz); the app
+          // claims it on first launch. Fire-and-forget — never blocks the page.
+          var plat = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'ios' : (/Android/i.test(navigator.userAgent) ? 'android' : 'web');
+          try {
+            fetch('https://licuokfukjbpedyzxxao.supabase.co/functions/v1/referral-capture', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer sb_publishable_nvPqdPX2hsMRA2wjfgHSPg_2kZm6L4K' },
+              body: JSON.stringify({ u: clean, platform: plat, tz: new Date().getTimezoneOffset() })
+            }).catch(function () {});
+          } catch (e) {}
         }
       }
       // Put the right store first for the visitor's device.
