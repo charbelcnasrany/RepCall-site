@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Get RepCall</title>
-<meta name="description" content="Get RepCall — prove you worked out, and push your crew to show up."/>
+<meta name="description" content="Get RepCall — the social network for fitness. Prove you show up, and push your crew to show up too."/>
 <style>
   :root{ --bg:#0A0A0D; --card:#17120f; --edge:#2a221c; --ink:#F4F4F5; --muted:#9BA1AB; --orange:#FF5A1F; --orange2:#FF8A3D; }
   *{box-sizing:border-box}
@@ -12,13 +12,16 @@
   .wrap{ flex:1; width:100%; max-width:460px; margin:0 auto; padding:56px 24px 40px; text-align:center; }
   h1{ font-size:40px; letter-spacing:-1px; margin:0 0 6px } h1 span{ color:var(--orange) }
   .tag{ color:var(--ink); font-size:18px; font-weight:700; margin:0 0 10px }
-  .blurb{ color:var(--muted); font-size:15px; line-height:1.5; margin:0 auto 32px; max-width:380px }
-  .beta{ display:inline-block; font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--orange2); border:1px solid var(--edge); border-radius:999px; padding:6px 12px; margin-bottom:26px }
-  .btn{ display:block; text-decoration:none; border-radius:14px; padding:16px 18px; font-size:16px; font-weight:800; margin:0 auto 12px; max-width:340px }
+  .blurb{ color:var(--muted); font-size:15px; line-height:1.5; margin:0 auto 24px; max-width:380px }
+  .invited{ display:inline-block; font-size:14px; font-weight:700; color:var(--ink); background:rgba(255,90,31,.12); border:1px solid var(--edge); border-radius:12px; padding:10px 14px; margin:0 auto 24px; max-width:340px }
+  .invited b{ color:var(--orange2) }
+  .btns{ display:flex; flex-direction:column; }
+  .btn{ display:block; text-decoration:none; border-radius:14px; padding:16px 18px; font-size:16px; font-weight:800; margin:0 auto 12px; max-width:340px; width:100%; }
   .btn.primary{ background:var(--orange); color:#0A0A0D }
   .btn.primary:active{ opacity:.9 }
-  .btn.ghost{ background:transparent; color:var(--muted); border:1px solid var(--edge); font-weight:700; cursor:default }
-  .sub{ color:var(--muted); font-size:13px; margin:6px auto 0; max-width:340px; line-height:1.5 }
+  .btn.secondary{ background:transparent; color:var(--ink); border:1px solid var(--edge); font-weight:700 }
+  .btn.secondary:active{ opacity:.8 }
+  .sub{ color:var(--muted); font-size:13px; margin:2px auto 0; max-width:340px; line-height:1.5 }
   .contact{ margin-top:28px; font-size:14px; color:var(--muted) }
   .contact a{ color:var(--orange2); text-decoration:none; font-weight:700 }
   footer{ padding:24px; text-align:center }
@@ -30,16 +33,17 @@
   <div class="wrap">
     <h1>Rep<span>Call</span></h1>
     <p class="tag">Show up. Get seen.</p>
-    <p class="blurb">Prove you worked out, keep each other's streaks alive, and push your crew to show up. Better than going alone.</p>
+    <p class="blurb">The social network for fitness — prove you worked out, keep each other's streaks alive, and push your crew to show up. Better than going alone.</p>
 
-    <div class="beta">Early access</div>
+    <p class="invited" id="invited" hidden></p>
 
-    <a class="btn primary" href="https://play.google.com/apps/testing/com.repcall">Join the Android beta</a>
-    <p class="sub">During early access, beta spots are invite-only — if you get a "not a tester" message, ask the friend who invited you, or email us below to be added.</p>
+    <div class="btns" id="btns">
+      <a class="btn primary" id="ios" href="https://apps.apple.com/app/id6792774851">Download on the App Store</a>
+      <a class="btn secondary" id="android" href="https://play.google.com/apps/testing/com.repcall">Join the Android beta</a>
+    </div>
+    <p class="sub" id="androidsub">Android is in open beta right now. If you hit a &ldquo;not a tester&rdquo; message, ask the friend who invited you, or email us to be added.</p>
 
-    <div class="btn ghost" style="margin-top:16px">iPhone — coming soon</div>
-
-    <p class="contact">Want in? <a href="mailto:hello@repcall.app">hello@repcall.app</a></p>
+    <p class="contact">Questions? <a href="mailto:hello@repcall.app">hello@repcall.app</a></p>
   </div>
   <footer>
     <a href="/privacy-policy.html">Privacy</a> ·
@@ -47,5 +51,30 @@
     <a href="/community-guidelines.html">Guidelines</a> ·
     <a href="/support.html">Support</a>
   </footer>
+  <script>
+    (function () {
+      // Who invited you (rides on ?u=<username>) — sanitize hard, it's untrusted.
+      var u = new URLSearchParams(location.search).get('u');
+      if (u) {
+        var clean = u.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20);
+        if (clean) {
+          var el = document.getElementById('invited');
+          el.innerHTML = '👋 Invited by <b>@' + clean + '</b> — add them once you’re in.';
+          el.hidden = false;
+          try { localStorage.setItem('repcall_ref', clean); } catch (e) {}
+        }
+      }
+      // Put the right store first for the visitor's device.
+      var ua = navigator.userAgent || '';
+      var ios = document.getElementById('ios'), android = document.getElementById('android'), btns = document.getElementById('btns');
+      if (/Android/i.test(ua)) {
+        // Android device: make the beta the primary action.
+        android.classList.remove('secondary'); android.classList.add('primary');
+        ios.classList.remove('primary'); ios.classList.add('secondary');
+        btns.insertBefore(android, ios);
+      }
+      // iPhone / desktop: App Store stays the primary action (it's live).
+    })();
+  </script>
 </body>
 </html>
