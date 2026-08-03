@@ -138,7 +138,7 @@
     .zero{color:var(--muted2)}
 
     /* bar panels (hourly / dow) */
-    .bars{display:flex;gap:3px;align-items:flex-end;height:150px;margin-top:4px}
+    .bars{display:flex;gap:3px;align-items:stretch;height:150px;margin-top:4px}
     .bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;min-width:0}
     .bar .fill{width:82%;max-width:26px;border-radius:5px 5px 0 0;background:linear-gradient(180deg,var(--orange),#b03d0e);min-height:2px;transition:height .3s cubic-bezier(.22,1,.36,1)}
     .bar .bl{font-size:10px;color:var(--muted2);white-space:nowrap}
@@ -186,7 +186,7 @@
   var METRICS = [
     {key:'checkins',    label:'Check-ins',   color:'#FF5A1F'},
     {key:'verified',    label:'Verified',    color:'#F5B301'},
-    {key:'wvcc',        label:'North Star',  color:'#FF8A3D'},
+    {key:'wvcc',        label:'Key metric',  color:'#FF8A3D'},
     {key:'active_users',label:'Active/day',  color:'#4ade80', avg:true},
     {key:'opens',       label:'App opens',   color:'#fb923c'},
     {key:'openers',     label:'Openers/day', color:'#2dd4bf', avg:true},
@@ -222,19 +222,19 @@
 
   // Bin rows to daily (identity) or ISO-week (Mon). Sums volumes; averages avg-keys.
   function binRows(rows, gran){
-    if(gran!=='week') return rows.map(function(r){var o={label:r.date,date:r.date,_days:1};SUM_KEYS.forEach(function(k){o[k]=n(r[k]);});o.active_users=n(r.active_users);return o;});
+    if(gran!=='week') return rows.map(function(r){var o={label:r.date,date:r.date,_days:1};SUM_KEYS.forEach(function(k){o[k]=n(r[k]);});o.active_users=n(r.active_users);o.openers=n(r.openers);return o;});
     var buckets={}, order=[];
     rows.forEach(function(r){
       var d=new Date(ymd(r.date)+'T00:00:00Z');
       var dow=(d.getUTCDay()+6)%7;                 // 0=Mon
       var mon=new Date(d.getTime()-dow*86400000);
       var key=mon.toISOString().slice(0,10);
-      if(!buckets[key]){buckets[key]={label:key,date:key,_days:0,_actSum:0};order.push(key);SUM_KEYS.forEach(function(k){buckets[key][k]=0;});}
+      if(!buckets[key]){buckets[key]={label:key,date:key,_days:0,_actSum:0,_opnSum:0};order.push(key);SUM_KEYS.forEach(function(k){buckets[key][k]=0;});}
       var b=buckets[key];
-      b._days++; b._actSum+=n(r.active_users);
+      b._days++; b._actSum+=n(r.active_users); b._opnSum+=n(r.openers);
       SUM_KEYS.forEach(function(k){b[k]+=n(r[k]);});
     });
-    return order.map(function(k){var b=buckets[k];b.active_users=b._days?b._actSum/b._days:0;return b;});
+    return order.map(function(k){var b=buckets[k];b.active_users=b._days?b._actSum/b._days:0;b.openers=b._days?b._opnSum/b._days:0;return b;});
   }
   // Value of a metric for one binned row (avg keys already averaged in the bin).
   function metricVal(row, key){return isAvg(key)? n(row[key]) : n(row[key]);}
@@ -319,7 +319,7 @@
     wrap.appendChild(platformSplit());
 
     wrap.appendChild(h('<div class="foot">First-party analytics · aggregate only, no personal data leaves the database · week & day boundaries use '+esc(RAW.tz)+
-      '.<br/>North Star = Weekly Verified Check-ins by Connected users. Auto-refreshes every 5 minutes.</div>'));
+      '.<br/>Key metric = each week, verified workouts by users who have at least one friend. Auto-refreshes every 5 minutes.</div>'));
 
     app.appendChild(wrap);
     // draw the chart after layout so widths are known
@@ -395,8 +395,8 @@
   function hero(){
     var ns=RAW.north_star||{};
     return h('<div class="hero anim">'+
-      '<div class="k">North Star</div>'+
-      '<div class="l">'+esc(ns.label||'Weekly Verified Check-ins by Connected users')+' · this ISO week</div>'+
+      '<div class="k">Key metric · this week</div>'+
+      '<div class="l">'+esc(ns.label||'Verified workouts by users who have a friend')+'</div>'+
       '<div class="v">'+n(ns.this_week)+'</div>'+
       '<div class="d">'+deltaHtml(n(ns.this_week),n(ns.prev_week))+'</div>'+
     '</div>');
@@ -599,16 +599,18 @@
 
   function retentionAllTime(){
     var el=h('<div class="anim"></div>');
-    var r=RAW.retention||{}, u=RAW.users||{}, tot=RAW.totals||{};
+    var r=RAW.retention||{}, u=RAW.users||{}, tot=RAW.totals||{}, eng=RAW.engagement||{};
     var cards='<div class="grid" style="margin-bottom:12px">'+
       kpiCard('W1 retention', fmtPct(r.w1_pct), 'checked in in week +1')+
       kpiCard('W2 retention', fmtPct(r.w2_pct), 'checked in in week +2')+
       kpiCard('Activated', fmtPct((RAW.activation||{}).activated_pct), 'check-in + a friend')+
-      kpiCard('Active (7d)', fmt(u.active_7d), 'distinct, last 7 days')+
+      kpiCard('Active (7d)', fmt(u.active_7d), 'distinct check-ins, last 7 days')+
+      kpiCard('Unique openers (7d)', fmt(eng.openers_7d), 'distinct app opens, last 7 days')+
     '</div>';
     var vr = n(tot.checkins)? Math.round(100*n(tot.verified)/n(tot.checkins)) : 0;
     var strip='<div class="allstrip">'+
       '<div><b>'+n(tot.users)+'</b>total users</div>'+
+      '<div><b>'+n(tot.openers)+'</b>unique openers</div>'+
       '<div><b>'+n(tot.checkins)+'</b>total check-ins</div>'+
       '<div><b>'+vr+'%</b>verified all-time</div>'+
       '<div><b>'+n(tot.reactions)+'</b>reactions</div>'+
