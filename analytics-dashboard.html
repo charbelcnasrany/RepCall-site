@@ -315,6 +315,9 @@
     wrap.appendChild(sectionTitle('Retention & all-time', 'weekly return rate · lifetime totals'));
     wrap.appendChild(retentionAllTime());
 
+    wrap.appendChild(sectionTitle('Platform', 'unique users by device · all-time · 7-day-active in the sub'));
+    wrap.appendChild(platformSplit());
+
     wrap.appendChild(h('<div class="foot">First-party analytics · aggregate only, no personal data leaves the database · week & day boundaries use '+esc(RAW.tz)+
       '.<br/>North Star = Weekly Verified Check-ins by Connected users. Auto-refreshes every 5 minutes.</div>'));
 
@@ -613,6 +616,35 @@
       '<div><b>'+n(tot.friendships)+'</b>friend links</div>'+
     '</div>';
     el.innerHTML=cards+strip;
+    return el;
+  }
+
+  // Unique users split by device platform (iOS / Android / Web), from the
+  // analytics_events.platform the app stamps on every event. all-time headline
+  // per platform + a 7-day-active sub, plus a proportion bar. Reads RAW.platforms;
+  // if the backend hasn't shipped that field yet, everything reads a graceful 0.
+  function platformSplit(){
+    var p=RAW.platforms||{};
+    var ios=n(p.ios), andr=n(p.android), web=n(p.web), tot=n(p.total);
+    var base=Math.max(1, ios+andr+web);
+    function share(v){return Math.round(n(v)/base*100)+'%';}
+    var el=h('<div class="anim"></div>');
+    var cards='<div class="grid" style="margin-bottom:12px">'+
+      kpiCard('iOS users', fmt(ios), share(ios)+' · '+fmt(n(p.ios_7d))+' active 7d')+
+      kpiCard('Android users', fmt(andr), share(andr)+' · '+fmt(n(p.android_7d))+' active 7d')+
+      (web>0? kpiCard('Web users', fmt(web), share(web)) : '')+
+      kpiCard('Unique users', fmt(tot), 'distinct across all platforms')+
+    '</div>';
+    function seg(v,c){var w=Math.round(n(v)/base*100);return w>0?'<div style="width:'+w+'%;background:'+c+'"></div>':'';}
+    function leg(c,label,v){return '<span style="display:inline-flex;align-items:center;gap:6px"><i style="width:9px;height:9px;border-radius:2px;background:'+c+';display:inline-block"></i>'+label+' '+share(v)+'</span>';}
+    var bar='<div class="allstrip" style="display:block">'+
+      '<div style="display:flex;height:16px;border-radius:8px;overflow:hidden;border:1px solid var(--edge2)">'+
+        seg(ios,'var(--orange)')+seg(andr,'var(--green)')+seg(web,'var(--blue)')+
+      '</div>'+
+      '<div style="display:flex;gap:16px;margin-top:9px;font-size:12px;color:var(--muted);flex-wrap:wrap">'+
+        leg('var(--orange)','iOS',ios)+leg('var(--green)','Android',andr)+(web>0?leg('var(--blue)','Web',web):'')+
+      '</div></div>';
+    el.innerHTML=cards+bar;
     return el;
   }
 
