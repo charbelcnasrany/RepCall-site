@@ -1,0 +1,14 @@
+{
+  "_comment": "RepCall remote app config. The app reads this at launch. To FORCE everyone below a version to update, raise that platform's min_version (e.g. 1.0.6) and push — takes effect within minutes. min_version 0.0.0 = nothing enforced. latest_version drives an optional soft nudge.",
+  "ios": {
+    "min_version": "0.0.0",
+    "latest_version": "1.0.5",
+    "store_url": "https://apps.apple.com/app/id6792774851"
+  },
+  "android": {
+    "min_version": "0.0.0",
+    "latest_version": "1.0.5",
+    "store_url": "https://play.google.com/store/apps/details?id=com.repcall"
+  },
+  "message": "Update to keep showing up with your crew."
+}
