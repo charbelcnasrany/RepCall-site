@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Get RepCall</title>
-<meta name="description" content="Get RepCall — the social network for fitness. Prove you show up, and push your crew to show up too."/>
+<meta name="description" content="Get RepCall — working out's more fun with your crew in it. Show up, prove it, and your friends see it."/>
 <style>
   :root{ --bg:#0A0A0D; --card:#17120f; --edge:#2a221c; --ink:#F4F4F5; --muted:#9BA1AB; --orange:#FF5A1F; --orange2:#FF8A3D; }
   *{box-sizing:border-box}
@@ -33,15 +33,14 @@
   <div class="wrap">
     <h1>Rep<span>Call</span></h1>
     <p class="tag">Show up. Get seen.</p>
-    <p class="blurb">The social network for fitness — prove you worked out, keep each other's streaks alive, and push your crew to show up. Better than going alone.</p>
+    <p class="blurb">Working out's more fun with your crew in it. RepCall's where you show up, prove it, and your friends see it — so nobody quietly stops showing up.</p>
 
     <p class="invited" id="invited" hidden></p>
 
     <div class="btns" id="btns">
       <a class="btn primary" id="ios" href="https://apps.apple.com/app/id6792774851">Download on the App Store</a>
-      <a class="btn secondary" id="android" href="https://play.google.com/apps/testing/com.repcall">Join the Android beta</a>
+      <a class="btn secondary" id="android" href="https://play.google.com/store/apps/details?id=com.repcall">Get it on Google Play</a>
     </div>
-    <p class="sub" id="androidsub">Android is in open beta right now. If you hit a &ldquo;not a tester&rdquo; message, ask the friend who invited you, or email us to be added.</p>
 
     <p class="contact">Questions? <a href="mailto:hello@repcall.app">hello@repcall.app</a></p>
   </div>
@@ -78,12 +77,12 @@
       var ua = navigator.userAgent || '';
       var ios = document.getElementById('ios'), android = document.getElementById('android'), btns = document.getElementById('btns');
       if (/Android/i.test(ua)) {
-        // Android device: make the beta the primary action.
+        // Android device: make Google Play the primary action.
         android.classList.remove('secondary'); android.classList.add('primary');
         ios.classList.remove('primary'); ios.classList.add('secondary');
         btns.insertBefore(android, ios);
       }
-      // iPhone / desktop: App Store stays the primary action (it's live).
+      // iPhone / desktop: App Store stays the primary action. Both stores are live.
     })();
   </script>
 </body>
