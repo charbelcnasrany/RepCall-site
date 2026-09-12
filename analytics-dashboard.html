@@ -271,7 +271,7 @@
   var LSK='repcall_dash_state_v1';
   var state=loadState();
   function loadState(){
-    var def={mode:'preset',range:30,start:null,end:null,gran:'day',compare:false,metric:'checkins',realOnly:false};
+    var def={mode:'preset',range:30,start:null,end:null,gran:'day',compare:false,metric:'checkins',realOnly:false,usersHideTest:true};
     try{var s=JSON.parse(localStorage.getItem(LSK));if(s&&typeof s==='object')return Object.assign(def,s);}catch(e){}
     return def;
   }
@@ -325,12 +325,15 @@
     wrap.appendChild(platformSplit());
     wrap.appendChild(platformTrend(cur));
 
+    wrap.appendChild(sectionTitle('Users', 'everyone on the app · newest first'));
+    wrap.appendChild(usersPanel());
+
     wrap.appendChild(h('<div class="foot">First-party analytics · aggregate only, no personal data leaves the database · week & day boundaries use '+esc(RAW.tz)+
       '.<br/>Key metric = each week, verified workouts by users who have at least one friend. Auto-refreshes every 5 minutes.</div>'));
 
     app.appendChild(wrap);
     // draw the chart after layout so widths are known
-    requestAnimationFrame(function(){drawTrend(cur, prev);});
+    requestAnimationFrame(function(){drawTrend(cur, prev); ensureUsers();});
   }
 
   function header(){
@@ -717,6 +720,81 @@
       '</svg>'+
       '<div class="legend"><span><i style="border-top-color:var(--orange)"></i>iOS</span><span><i style="border-top-color:var(--green)"></i>Android</span></div>';
     return el;
+  }
+
+  // ===================================================================
+  // Users — the owner-only roster (PII). Lazy-fetched ONCE from the same
+  // key-gated function with ?view=users, rendered as a table. Best-effort:
+  // any failure shows a quiet inline note and NEVER breaks the dashboard.
+  // ===================================================================
+  var USERS=null, USERS_ERR=null, usersLoading=false;
+
+  function usersPanel(){ return h('<div id="usersBox" class="anim"></div>'); }
+
+  function paintUsers(){
+    var box=document.getElementById('usersBox'); if(!box) return;
+    if(USERS_ERR){
+      box.innerHTML='<div style="color:var(--muted);font-size:13px;padding:8px 2px">Couldn’t load the user list ('+esc(USERS_ERR)+'). The rest of the dashboard is unaffected.</div>';
+      return;
+    }
+    if(USERS===null){
+      box.innerHTML='<div style="color:var(--muted2);font-size:13px;padding:8px 2px">Loading users…</div>';
+      return;
+    }
+    var all=USERS.slice();
+    var real=all.filter(function(u){return !u.is_test;});
+    var hide=state.usersHideTest!==false;                 // default: hide test/review
+    var rows=hide? real : all;
+    var head='<thead><tr>'+
+        '<th>Name / handle</th>'+
+        '<th style="text-align:left">Email</th>'+
+        '<th>Joined</th>'+
+        '<th>Check-ins</th>'+
+        '<th>Friends</th>'+
+        '<th>Push</th>'+
+      '</tr></thead>';
+    var body=rows.map(function(u){
+      var dn=u.display_name? esc(u.display_name) : (u.username? '@'+esc(u.username) : '—');
+      var handle=(u.display_name && u.username)? ' <span style="color:var(--muted2);font-weight:500">@'+esc(u.username)+'</span>' : '';
+      var tag=u.is_test? ' <span style="color:var(--muted2);font-size:10px;text-transform:uppercase;letter-spacing:.04em;border:1px solid var(--edge);border-radius:5px;padding:1px 5px;margin-left:6px">test</span>' : '';
+      var push=u.has_token? '<span class="up">✓</span>' : '<span class="zero">–</span>';
+      return '<tr>'+
+        '<td>'+dn+handle+tag+'</td>'+
+        '<td style="text-align:left;color:var(--muted);white-space:normal">'+esc(u.email||'—')+'</td>'+
+        '<td>'+(u.joined? esc(fmtDate(u.joined)) : '—')+'</td>'+
+        '<td>'+fmt(u.checkins)+'</td>'+
+        '<td>'+fmt(u.friends)+'</td>'+
+        '<td>'+push+'</td>'+
+      '</tr>';
+    }).join('');
+    box.innerHTML=
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">'+
+        '<span class="hint" style="color:var(--muted2);font-size:12px">showing '+real.length+' real of '+all.length+'</span>'+
+        '<button class="toggle" id="usersTestToggle" aria-pressed="'+hide+'"><span class="sw"></span><span class="tt">Hide test / review</span></button>'+
+      '</div>'+
+      '<div class="tablewrap"><table>'+head+'<tbody>'+
+        (body||'<tr><td colspan="6" style="text-align:center;color:var(--muted)">No users to show.</td></tr>')+
+      '</tbody></table></div>';
+    var tg=box.querySelector('#usersTestToggle');
+    if(tg) tg.addEventListener('click',function(){
+      state.usersHideTest = !(state.usersHideTest!==false);
+      saveState(); paintUsers();
+    });
+  }
+
+  function ensureUsers(){
+    paintUsers();                                         // paint current state first
+    if(USERS!==null || USERS_ERR!==null || usersLoading) return;
+    usersLoading=true;
+    fetch(FN+'?view=users&key='+encodeURIComponent(KEY),{cache:'no-store'})
+      .then(function(res){
+        if(res.status===401){ USERS_ERR='unauthorized'; return null; }
+        if(!res.ok){ USERS_ERR='HTTP '+res.status; return null; }
+        return res.json();
+      })
+      .then(function(data){ if(data!=null) USERS=Array.isArray(data)? data : []; })
+      .catch(function(){ USERS_ERR='network error'; })
+      .finally(function(){ usersLoading=false; paintUsers(); });
   }
 
   // ===================================================================
