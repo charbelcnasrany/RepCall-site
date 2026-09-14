@@ -252,6 +252,7 @@
   function fmt(v){v=n(v);return (Math.abs(v-Math.round(v))<1e-9)? String(Math.round(v)) : v.toFixed(1);}
   function fmtDate(s){var p=ymd(s).split('-');return MON[(+p[1]||1)-1]+' '+(+p[2]);}
   function fmtPct(v){return fmt(v)+'%';}
+  function fmtBytes(b){b=n(b);if(b<1024)return Math.round(b)+' B';var u=['KB','MB','GB','TB'],i=-1;do{b/=1024;i++;}while(b>=1024&&i<u.length-1);return (b<10?b.toFixed(1):Math.round(b))+' '+u[i];}
   function metricByKey(k){for(var i=0;i<METRICS.length;i++)if(METRICS[i].key===k)return METRICS[i];return METRICS[0];}
 
   function deltaHtml(cur,prev,opts){
@@ -328,12 +329,15 @@
     wrap.appendChild(sectionTitle('Users', 'everyone on the app · newest first'));
     wrap.appendChild(usersPanel());
 
+    wrap.appendChild(sectionTitle('Capacity & limits', 'backend usage vs the Free-plan ceilings'));
+    wrap.appendChild(capacityPanel());
+
     wrap.appendChild(h('<div class="foot">First-party analytics · aggregate only, no personal data leaves the database · week & day boundaries use '+esc(RAW.tz)+
       '.<br/>Key metric = each week, verified workouts by users who have at least one friend. Auto-refreshes every 5 minutes.</div>'));
 
     app.appendChild(wrap);
     // draw the chart after layout so widths are known
-    requestAnimationFrame(function(){drawTrend(cur, prev); ensureUsers();});
+    requestAnimationFrame(function(){drawTrend(cur, prev); ensureUsers(); ensureCapacity();});
   }
 
   function header(){
@@ -795,6 +799,81 @@
       .then(function(data){ if(data!=null) USERS=Array.isArray(data)? data : []; })
       .catch(function(){ USERS_ERR='network error'; })
       .finally(function(){ usersLoading=false; paintUsers(); });
+  }
+
+  // ===================================================================
+  // Capacity & limits — backend usage vs the Free-plan ceilings. Lazy-fetched
+  // ONCE from the same key-gated function with ?view=limits (PII-free: bytes +
+  // counts only). Best-effort: any failure shows a quiet note, never breaks the page.
+  // ===================================================================
+  var LIMITS=null, LIMITS_ERR=null, capLoading=false;
+  // Free-tier ceilings (the plan facts live here, not in the DB).
+  var CEIL={storage:1073741824, db:524288000, egress:5368709120};
+
+  function capacityPanel(){ return h('<div id="capBox" class="anim"></div>'); }
+
+  function meterRow(label, used, ceil, note){
+    var pct=ceil? Math.min(100, used/ceil*100) : 0;
+    var color = pct>=90? '#e5484d' : pct>=70? 'var(--orange)' : '#35D08A';
+    return '<div style="margin:0 0 14px">'+
+      '<div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-bottom:5px">'+
+        '<span style="color:var(--ink2);font-weight:700">'+esc(label)+'</span>'+
+        '<span style="color:var(--muted);font-variant-numeric:tabular-nums">'+fmtBytes(used)+' / '+fmtBytes(ceil)+' · '+fmt(pct)+'%</span>'+
+      '</div>'+
+      '<div style="height:8px;border-radius:99px;background:var(--edge2);overflow:hidden">'+
+        '<div style="height:100%;width:'+pct.toFixed(1)+'%;background:'+color+';border-radius:99px"></div>'+
+      '</div>'+
+      (note? '<div style="color:var(--muted2);font-size:11.5px;margin-top:4px">'+esc(note)+'</div>' : '')+
+    '</div>';
+  }
+
+  function paintCapacity(){
+    var box=document.getElementById('capBox'); if(!box) return;
+    if(LIMITS_ERR){ box.innerHTML='<div style="color:var(--muted);font-size:13px;padding:8px 2px">Couldn’t load capacity ('+esc(LIMITS_ERR)+'). The rest of the dashboard is unaffected.</div>'; return; }
+    if(LIMITS===null){ box.innerHTML='<div style="color:var(--muted2);font-size:13px;padding:8px 2px">Loading capacity…</div>'; return; }
+    var L=LIMITS, st=L.storage||{}, cm=L.checkin_media||{}, buckets=st.buckets||[];
+    var perFile=L.per_file_limit_bytes||52428800;
+    var bucketRows=buckets.map(function(b){
+      return '<tr><td style="text-align:left">'+esc(b.bucket)+'</td><td>'+fmt(b.objects)+'</td><td>'+fmtBytes(b.bytes)+'</td></tr>';
+    }).join('');
+    box.innerHTML=
+      meterRow('File storage', n(st.total_bytes), CEIL.storage, fmt(n(st.total_objects))+' objects across '+buckets.length+' buckets') +
+      meterRow('Database', n(L.db_bytes), CEIL.db, null) +
+      '<div style="margin:0 0 14px">'+
+        '<div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-bottom:5px">'+
+          '<span style="color:var(--ink2);font-weight:700">Bandwidth (egress)</span>'+
+          '<span style="color:var(--muted);font-variant-numeric:tabular-nums">— / '+fmtBytes(CEIL.egress)+' / mo</span>'+
+        '</div>'+
+        '<div style="height:8px;border-radius:99px;background:var(--edge2);overflow:hidden"><div style="height:100%;width:0;background:var(--edge)"></div></div>'+
+        '<div style="color:var(--muted2);font-size:11.5px;margin-top:4px">Not stored in the database — see <a href="https://supabase.com/dashboard/project/licuokfukjbpedyzxxao/reports/storage" target="_blank" rel="noopener" style="color:var(--orange)">Supabase → Reports</a>. This is what video playback consumes; watch it as viewership grows.</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 14px">'+
+        '<div style="flex:1 1 190px;border:1px solid var(--edge2);border-radius:12px;padding:11px 13px">'+
+          '<div style="color:var(--muted2);font-size:11px;text-transform:uppercase;letter-spacing:.04em">Per-file upload cap</div>'+
+          '<div style="color:var(--ink);font-size:18px;font-weight:800;margin-top:3px">'+fmtBytes(perFile)+'</div>'+
+          '<div style="color:var(--muted);font-size:11.5px;margin-top:2px">Free-plan hard limit. Check-in videos are capped at capture to stay under it.</div>'+
+        '</div>'+
+        '<div style="flex:1 1 190px;border:1px solid var(--edge2);border-radius:12px;padding:11px 13px">'+
+          '<div style="color:var(--muted2);font-size:11px;text-transform:uppercase;letter-spacing:.04em">Orphaned media</div>'+
+          '<div style="color:var(--ink);font-size:18px;font-weight:800;margin-top:3px">'+fmt(n(cm.orphan_objects))+' · '+fmtBytes(cm.orphan_bytes)+'</div>'+
+          '<div style="color:var(--muted);font-size:11.5px;margin-top:2px">Files no live check-in references — safe to purge.</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="tablewrap"><table><thead><tr><th style="text-align:left">Bucket</th><th>Objects</th><th>Size</th></tr></thead><tbody>'+
+        (bucketRows||'<tr><td colspan="3" style="text-align:center;color:var(--muted)">No objects.</td></tr>')+
+      '</tbody></table></div>'+
+      '<div style="color:var(--muted2);font-size:11px;margin-top:8px">Plan: Free · ceilings are the Free-tier limits · as of '+esc(L.generated_at? String(L.generated_at).slice(0,16).replace('T',' ') : '—')+' UTC</div>';
+  }
+
+  function ensureCapacity(){
+    paintCapacity();
+    if(LIMITS!==null || LIMITS_ERR!==null || capLoading) return;
+    capLoading=true;
+    fetch(FN+'?view=limits&key='+encodeURIComponent(KEY),{cache:'no-store'})
+      .then(function(res){ if(res.status===401){LIMITS_ERR='unauthorized';return null;} if(!res.ok){LIMITS_ERR='HTTP '+res.status;return null;} return res.json(); })
+      .then(function(data){ if(data!=null) LIMITS=data; })
+      .catch(function(){ LIMITS_ERR='network error'; })
+      .finally(function(){ capLoading=false; paintCapacity(); });
   }
 
   // ===================================================================
