@@ -20,6 +20,14 @@
   .step{ display:flex; gap:14px; align-items:flex-start; background:var(--card); border:1px solid var(--edge); border-radius:14px; padding:15px 16px }
   .step .n{ flex:none; width:26px; height:26px; border-radius:8px; background:rgba(255,90,31,.14); color:var(--orange2); font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center }
   .step .t{ font-size:15px; line-height:1.45 } .step .t b{ color:var(--ink); font-weight:800 } .step .t span{ color:var(--muted) }
+  /* Launch-directory badges. Sized in CSS, not on the <img>, so the box is reserved before
+     the image loads — height="auto" is not a valid HTML attribute value and lets the page
+     jump as each badge arrives. */
+  .badges{ display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:center; margin:40px auto 0 }
+  .badges a{ display:block; line-height:0 }
+  /* Matched on HEIGHT, not width: the two badges are 3.00:1 and 3.54:1, so equal widths
+     would render them at visibly different heights and read as a mistake. */
+  .badges img{ height:56px; width:auto; max-width:100%; }
   footer{ padding:26px; text-align:center }
   footer a{ color:var(--muted); font-size:13px; font-weight:600; text-decoration:none; margin:0 6px }
   footer a:hover{ text-decoration:underline }
@@ -37,6 +45,17 @@
       <div class="step"><div class="n">1</div><div class="t"><b>Show up.</b> <span>One tap says you're working out — anywhere you train.</span></div></div>
       <div class="step"><div class="n">2</div><div class="t"><b>Prove it.</b> <span>A photo and your spot make it real. Proof, not claims.</span></div></div>
       <div class="step"><div class="n">3</div><div class="t"><b>Your crew sees it.</b> <span>They hype it, the flame tracks your week, and nobody quietly stops showing up.</span></div></div>
+    </div>
+
+    <div class="badges">
+      <a href="https://lift-off.sh/p/repcall" target="_blank" rel="noopener" title="LiftOff launch badge">
+        <img src="https://lift-off.sh/images/badges/badgeLaunchedDark.webp"
+             alt="RepCall on LiftOff" width="168" height="56" loading="lazy" />
+      </a>
+      <a href="https://peerpush.com/p/repcall" target="_blank" rel="noopener">
+        <img src="https://peerpush.com/p/repcall/badge.png"
+             alt="RepCall on PeerPush" width="198" height="56" loading="lazy" />
+      </a>
     </div>
   </div>
   <footer>
