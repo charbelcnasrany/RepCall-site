@@ -1,8 +1,8 @@
 {
   "_comment": "RepCall remote app config. The app reads this at launch. To FORCE everyone below a version to update, raise that platform's min_version and push \u2014 takes effect within minutes. min_version 0.0.0 = nothing enforced. latest_version drives an optional soft nudge. RAISE EACH PLATFORM ONLY ONCE ITS STORE ACTUALLY SERVES THAT BUILD: arming ahead of propagation tells people to fetch something that is not there yet.",
   "ios": {
-    "min_version": "1.0.6",
-    "latest_version": "1.0.6",
+    "min_version": "1.0.10",
+    "latest_version": "1.0.10",
     "store_url": "https://apps.apple.com/app/id6792774851"
   },
   "android": {
