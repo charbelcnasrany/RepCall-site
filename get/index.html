@@ -65,9 +65,9 @@
           // claims it on first launch. Fire-and-forget — never blocks the page.
           var plat = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'ios' : (/Android/i.test(navigator.userAgent) ? 'android' : 'web');
           try {
-            fetch('https://licuokfukjbpedyzxxao.supabase.co/functions/v1/referral-capture', {
+            fetch('https://beeglejqrbygnztzqela.supabase.co/functions/v1/referral-capture', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer sb_publishable_nvPqdPX2hsMRA2wjfgHSPg_2kZm6L4K' },
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer sb_publishable_zzBqxlQHvcHoxE8yPApOZg_oFMkxs3x' },
               body: JSON.stringify({ u: clean, platform: plat, tz: new Date().getTimezoneOffset() })
             }).catch(function () {});
           } catch (e) {}
