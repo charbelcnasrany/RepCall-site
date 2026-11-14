@@ -58,7 +58,10 @@
         var clean = u.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20);
         if (clean) {
           var el = document.getElementById('invited');
-          el.innerHTML = '👋 Invited by <b>@' + clean + '</b> — you’ll be connected when you open the app.';
+          // Do NOT promise an automatic connection. The deferred match is best-effort
+          // (device fingerprint, 24h window) and had ZERO successes in the app's first
+          // months, so this line tells them the one thing that always works: the handle.
+          el.innerHTML = '👋 Invited by <b>@' + clean + '</b> — open the app and enter their handle when it asks who sent you.';
           el.hidden = false;
           // Deferred auto-add on our OWN Supabase (no third party): stash the referral
           // keyed by a coarse device fingerprint (server IP + platform + tz); the app
