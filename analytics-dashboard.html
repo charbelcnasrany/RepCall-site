@@ -10,6 +10,46 @@
   180-day `daily[]` series — so range filters and the compare toggle are instant, no
   round-trips. It refetches every 5 min (keeping your filters) so it stays "living".
   The key lives only in your bookmarked URL, never in this file.
+
+  ——— v2, 2026-11-20 — read this before editing ———————————————————————————
+  The page answers the eight ranked questions in 02-product/briefs/ANALYTICS-V2-BRIEF.md,
+  in that order: arrival shape and the invite loop lead, because that is where the
+  product is actually broken.
+
+  It reads top to bottom in four tiers:
+    THE READING      key metric + the briefing — what is broken, ranked, each row
+                     jumping to the section that proves it.
+    THE QUESTIONS    the eight sections, in the brief's priority order. Verdicts live
+                     here.
+    THE SERIES       volume over time (KPIs, trend, newer signals, day-by-day).
+    REFERENCE        habit, retention, timing, platform, users, capacity. Background
+                     numbers that need no decision; deliberately last.
+
+  SWITCHED-OFF FEATURES ARE NOT REPORTED ON (Charbel, 2026-11-20): Rep Calls
+  (REP_CALLS_ENABLED=false) and Rivalry/mocks (RIVALRY_ENABLED=false) are filtered
+  out of `features[]` and `notifications.by_type_7d` by the KILLED regex — they can
+  never produce new data, so a counter for them is a phantom roadmap. Nudges STAY:
+  still live, barely used, and that is the insight.
+
+  Three rules hold the whole thing together:
+
+  1. GRACEFUL DEGRADATION IS THE CONTRACT. Each new section is driven by one
+     top-level snapshot key (`arrival`, `invite_loop`, `features`, `social_depth`,
+     `streaks`, `verification`, `notifications`, `compliance`) and the SQL for those
+     ships separately. Every section calls present() first and renders a quiet,
+     explained "not yet reported" panel — never a crash, a NaN, or a box of zeros.
+     Feed this file the pre-v2 snapshot and you get eight placeholders plus the
+     entire original dashboard, working. Same for the newer `daily[]` fields
+     (meals, comments, tags, music, invites, clicks): dailyHasKey() decides whether
+     a chip, a column or a sparkline exists at all.
+  2. THE HONEST-RATE RULE. 71 users, 3 meals, 0 reposts — a percentage on a base of
+     3 is a lie told confidently. Every rate goes through rate(): the absolute always
+     travels with it, and a base under MIN_BASE prints as a raw fraction instead of a
+     bold percentage. Derived counts (where the snapshot sends a rate but no count)
+     are marked with "≈".
+  3. EVERY SECTION STATES A VERDICT. One computed plain-English sentence above the
+     numbers, because this page is read by one person who wants a reading, not a
+     metric. If you add a panel, write its verdict.
 -->
 <html lang="en">
 <head>
@@ -82,7 +122,7 @@
     .hero .d{font-size:13.5px;margin-top:8px;font-weight:600}
 
     /* section titles */
-    .sec{display:flex;align-items:baseline;gap:10px;margin:26px 2px 13px}
+    .sec{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin:26px 2px 13px}
     .sec h2{font-size:13px;font-weight:800;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;margin:0}
     .sec .hint{font-size:12px;color:var(--muted2)}
 
@@ -169,6 +209,118 @@
       .anim{animation:none}
       .bar .fill,.rowlist .ff,.tip{transition:none}
     }
+
+    /* =================================================================
+       v2 — the insight layer (2026-11-20)
+       Counters answer "how many". These styles exist to answer "so what":
+       a computed verdict per section, an honest-rate treatment that never
+       lets a percentage travel without its absolute, and a quiet
+       "not yet reported" state for every panel whose SQL hasn't shipped.
+       ================================================================= */
+
+    /* VERDICT — one plain-English sentence, computed from the data below it.
+       The dot only repeats what the sentence already says (never colour-only). */
+    .verdict{display:flex;gap:10px;align-items:flex-start;background:var(--card2);border:1px solid var(--edge2);
+      border-radius:14px;padding:12px 14px;margin-bottom:12px;font-size:13.5px;line-height:1.55;color:var(--ink2)}
+    .verdict .vd{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:0 0 auto;background:var(--muted2)}
+    .verdict b{color:var(--ink);font-weight:800}
+    .verdict.ok .vd{background:var(--green)}
+    .verdict.warn .vd{background:var(--gold)}
+    .verdict.bad .vd{background:var(--red)}
+
+    /* NOT YET REPORTED — the snapshot has no key for this panel yet. Quiet,
+       explained, never an error and never a box of zeros. */
+    /* Explanatory copy here sits at 11–12px, so it uses --muted (6.2:1 on the card)
+       and NOT --muted2 (3.6:1) — these sentences have to be readable, not decorative. */
+    .pending{border:1px dashed var(--edge);border-radius:14px;padding:14px 15px;background:rgba(255,255,255,.012)}
+    .pending .pl{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+    .pending .pb{font-size:13.5px;color:var(--ink2);margin-top:6px;line-height:1.5}
+    .pending .pn{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5}
+    code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;color:var(--ink2)}
+    .badge{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+      border:1px dashed var(--edge);border-radius:99px;padding:2px 8px;white-space:nowrap}
+    .subnote{font-size:12px;color:var(--muted);line-height:1.5;padding:6px 2px 2px}
+
+    /* HONEST RATES — a thin base is shown as a raw fraction at a smaller size,
+       so it can never be mistaken for a confident percentage. */
+    .card .cv .thin,.spark .sv .thin{font-size:21px;font-weight:800;color:var(--ink2)}
+    .card .cs .base{color:var(--ink2);font-weight:700;font-variant-numeric:tabular-nums}
+    .card .cs .warnbase{color:var(--gold);font-weight:700}
+
+    /* FUNNEL — step, then the conversion into the next step, so the leak is
+       a line of text as well as a shape. */
+    .fun .step{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:13.5px;color:var(--ink2);margin-bottom:6px}
+    .fun .step b{font-size:17px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+    .fun .step .sl{font-weight:700}
+    .fun .trk{background:var(--bg2);border:1px solid transparent;border-radius:8px;height:16px;overflow:hidden}
+    .fun .trk.out{border-color:rgba(248,113,113,.55);background:rgba(248,113,113,.07)}
+    .fun .fl2{height:100%;background:linear-gradient(90deg,var(--orange),var(--gold));border-radius:8px}
+    .fun .conv{font-size:12px;color:var(--muted);padding:7px 0 9px 15px;line-height:1.45}
+    .fun .conv .ar{color:var(--muted2);margin-right:7px}
+    .fun .conv.leak{color:#fca5a5}
+    .fun .conv.leak b{color:#fca5a5;font-weight:800;text-transform:uppercase;letter-spacing:.05em;font-size:10.5px;margin-right:6px}
+
+    /* labelled bars — extends the existing .bars idiom with a value above and a
+       base below. CSS text, not SVG text, so it stays legible on a phone. */
+    .bars.tall{height:220px}
+    .bar .bv{font-size:11.5px;font-weight:800;color:var(--ink2);font-variant-numeric:tabular-nums}
+    .bar .bn{font-size:10px;color:var(--muted2);white-space:nowrap}
+    .bar .fill.thinbar{background:repeating-linear-gradient(45deg,var(--card2) 0 3px,rgba(255,90,31,.5) 3px 7px);border:1px solid var(--edge)}
+    .bar .fill.gold{background:linear-gradient(180deg,var(--gold),#a2730a)}
+
+    /* status pills — the feature table's verdict column */
+    .sp{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;text-transform:uppercase;
+      letter-spacing:.05em;border:1px solid var(--edge);border-radius:99px;padding:3px 9px;white-space:nowrap;color:var(--muted)}
+    .sp i{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block;flex:0 0 auto}
+    .sp.dead{color:#fca5a5;border-color:rgba(248,113,113,.45);background:rgba(248,113,113,.12)}
+    .sp.cold{color:var(--gold);border-color:rgba(245,179,1,.35);background:rgba(245,179,1,.09)}
+    .sp.live{color:#86efac;border-color:rgba(74,222,128,.32);background:rgba(74,222,128,.09)}
+    .sp.fresh{color:#9ec5fe;border-color:rgba(96,165,250,.32);background:rgba(96,165,250,.09)}
+    tbody tr.deadrow{background:rgba(248,113,113,.07)}
+    tbody tr.deadrow:hover{background:rgba(248,113,113,.12)}
+    td.lcell{text-align:left}
+    .tsub{display:block;font-size:11px;color:var(--muted2);font-weight:500;margin-top:2px}
+
+    /* sparkline strip — the new per-day series */
+    .sparks{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+    .spark{background:var(--card);border:1px solid var(--edge2);border-radius:14px;padding:12px 13px 10px;box-shadow:var(--shadow)}
+    .spark .sl{font-size:11px;letter-spacing:.03em;text-transform:uppercase;color:var(--muted)}
+    .spark .sv{font-size:23px;font-weight:800;margin-top:5px;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+    .spark .sd{font-size:11.5px;margin-top:3px;color:var(--muted)}
+    .spark svg{display:block;width:100%;height:30px;margin-top:8px}
+
+    /* two-way proportion bar */
+    .split{display:flex;height:16px;border-radius:8px;overflow:hidden;border:1px solid var(--edge2)}
+    .splitleg{display:flex;gap:16px;margin-top:9px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+    .splitleg i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:6px}
+    .ptitle{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:800;margin-bottom:10px}
+    .stack{margin-top:12px}
+
+    /* THE BRIEFING — the page opens with what is broken, not with counters.
+       Each row jumps to the section that proves it. */
+    .brief{background:linear-gradient(135deg,var(--card),var(--card2));border:1px solid var(--edge);
+      border-radius:16px;padding:16px 16px 6px;box-shadow:var(--shadow)}
+    .brow{display:flex;gap:11px;align-items:flex-start;padding:11px 0;min-height:44px;
+      border-bottom:1px solid var(--edge2);color:var(--ink2);font-size:13.5px;line-height:1.5;text-decoration:none}
+    .brow:last-of-type{border-bottom:0}
+    .brow:hover{color:var(--ink)}
+    .bdot{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:0 0 auto;background:var(--muted2)}
+    .brow.bad .bdot{background:var(--red)}
+    .brow.warn .bdot{background:var(--gold)}
+    .bname{color:var(--ink);font-weight:800}
+    .bgo{margin-left:auto;color:var(--muted2);font-size:16px;line-height:1.2;flex:0 0 auto;padding-left:8px}
+    .bfoot{font-size:12px;color:var(--muted);line-height:1.5;padding:11px 0 10px;border-top:1px solid var(--edge2)}
+
+    /* page tiers — the instrument first, the reference material last */
+    .tier{display:flex;align-items:center;gap:12px;margin:44px 2px 2px}
+    .tier h3{font-size:11.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0}
+    .tier .ln{flex:1;height:1px;background:var(--edge2);min-width:16px}
+    .tier .tn{font-size:12px;color:var(--muted);font-weight:500;letter-spacing:0;text-transform:none}
+    .sec{scroll-margin-top:84px}
+    @media(max-width:560px){
+      .tier{flex-wrap:wrap;gap:6px 12px}
+      .tier .ln{display:none}
+    }
   </style>
 </head>
 <body>
@@ -180,9 +332,25 @@
   // ===TESTABLE_START===
   function n(v){return (typeof v==='number'&&isFinite(v))?v:(Number(v)||0);}
   function ymd(s){return String(s).slice(0,10);}
+  function fmt(v){v=n(v);return (Math.abs(v-Math.round(v))<1e-9)? String(Math.round(v)) : v.toFixed(1);}
+
+  // ——— THE HONEST-RATE RULE ————————————————————————————————————————
+  // This is a 71-person app. A percentage on a base of 3 is a lie told
+  // confidently, so: a rate NEVER travels without its absolute, and under
+  // MIN_BASE we print the raw fraction instead of a bold percentage.
+  // Every rate on this page goes through here.
+  var MIN_BASE=10;
+  function rate(num, den){
+    num=n(num); den=n(den);
+    if(den<=0)       return {ok:false,text:'—',                  base:'nothing to measure yet',                           pct:null};
+    if(den<MIN_BASE) return {ok:false,text:fmt(num)+' of '+fmt(den), base:'base of '+fmt(den)+' — too small for a percentage', pct:100*num/den};
+    return             {ok:true, text:Math.round(100*num/den)+'%', base:fmt(num)+' of '+fmt(den),                          pct:100*num/den};
+  }
 
   // Metric registry. `avg:true` = per-day distinct (active users) → averaged in a
   // bin, never summed. Everything else is a volume that sums.
+  // `opt:true` = a daily[] field the SQL may not have shipped yet; offered as a
+  // chip only once it actually appears in the series.
   var METRICS = [
     {key:'checkins',    label:'Check-ins',   color:'#FF5A1F'},
     {key:'verified',    label:'Verified',    color:'#F5B301'},
@@ -192,10 +360,40 @@
     {key:'new_users',   label:'New users',   color:'#60a5fa'},
     {key:'reactions',   label:'Reactions',   color:'#c084fc'},
     {key:'nudges',      label:'Nudges',      color:'#f472b6'},
-    {key:'with_media',  label:'With media',  color:'#22d3ee'}
+    {key:'with_media',  label:'With media',  color:'#22d3ee'},
+    {key:'comments',    label:'Comments',    color:'#818cf8', opt:true},
+    {key:'meals',       label:'Meals',       color:'#a3e635', opt:true},
+    {key:'music',       label:'Music',       color:'#34d399', opt:true},
+    {key:'tags',        label:'Tags',        color:'#e879f9', opt:true},
+    {key:'invites',     label:'Invites',     color:'#38bdf8', opt:true},
+    {key:'clicks',      label:'Link clicks', color:'#fcd34d', opt:true}
   ];
-  var SUM_KEYS=['checkins','verified','with_media','photo','video','wvcc','new_users','reactions','nudges','opens','new_friendships'];
+  var NEW_DAILY=['comments','meals','music','tags','invites','clicks'];
+  var SUM_KEYS=['checkins','verified','with_media','photo','video','wvcc','new_users','reactions','nudges','opens','new_friendships',
+                'comments','meals','music','tags','invites','clicks'];
   function isAvg(k){for(var i=0;i<METRICS.length;i++)if(METRICS[i].key===k)return !!METRICS[i].avg;return false;}
+
+  // A daily[] field only EXISTS once the SQL ships it. Summing an absent key
+  // would print a confident wall of zeros, so we check before offering it.
+  function dailyHasKey(daily, k){
+    daily=daily||[];
+    for(var i=0;i<daily.length;i++){var v=daily[i][k];if(v!==undefined&&v!==null)return true;}
+    return false;
+  }
+  function availableMetrics(daily){
+    return METRICS.filter(function(m){return !m.opt || dailyHasKey(daily,m.key);});
+  }
+  // The step with the biggest proportional drop from the step before it.
+  // -1 when nothing drops (or there is nothing to drop from).
+  function leakIndex(steps){
+    var worst=0, at=-1;
+    for(var i=1;i<steps.length;i++){
+      var p=n(steps[i-1].v); if(p<=0) continue;
+      var d=(p-n(steps[i].v))/p;
+      if(d>worst+1e-9){worst=d;at=i;}
+    }
+    return at;
+  }
 
   // Current window from the full daily[] for a filter state.
   function selectWindow(daily, state){
@@ -249,9 +447,23 @@
   // ===================================================================
   var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-  function fmt(v){v=n(v);return (Math.abs(v-Math.round(v))<1e-9)? String(Math.round(v)) : v.toFixed(1);}
   function fmtDate(s){var p=ymd(s).split('-');return MON[(+p[1]||1)-1]+' '+(+p[2]);}
   function fmtPct(v){return fmt(v)+'%';}
+  // Hours → a unit a human reads. null when there is nothing to report.
+  function fmtDur(hrs){
+    hrs=n(hrs);
+    if(hrs<=0) return null;
+    if(hrs<1)  return Math.round(hrs*60)+' min';
+    if(hrs<48) return (hrs<10? fmt(Math.round(hrs*10)/10) : String(Math.round(hrs)))+' h';
+    return Math.round(hrs/24)+' days';
+  }
+  function daysSince(d){
+    if(!d) return null;
+    var t=Date.parse(ymd(d)+'T00:00:00Z');
+    if(!isFinite(t)) return null;
+    return Math.max(0, Math.round((Date.now()-t)/86400000));
+  }
+  function plural(v,one,many){return fmt(v)+' '+(n(v)===1? one : many);}
   function fmtBytes(b){b=n(b);if(b<1024)return Math.round(b)+' B';var u=['KB','MB','GB','TB'],i=-1;do{b/=1024;i++;}while(b>=1024&&i<u.length-1);return (b<10?b.toFixed(1):Math.round(b))+' '+u[i];}
   function metricByKey(k){for(var i=0;i<METRICS.length;i++)if(METRICS[i].key===k)return METRICS[i];return METRICS[0];}
 
@@ -297,30 +509,64 @@
     var cur=selectWindow(RAW.daily, state);
     var prev=prevWindow(RAW.daily, cur);
 
+    // A chip for a daily[] field the SQL hasn't shipped would chart a flat zero.
+    if(!availableMetrics(RAW.daily).some(function(m){return m.key===state.metric;})) state.metric='checkins';
+
+    // ——— THE READING: what is broken, ranked, with a jump to the evidence ———
+    wrap.appendChild(safe(briefing, 'The briefing'));
+
+    // ——— THE EIGHT QUESTIONS, in the brief's priority order ———————————————
+    wrap.appendChild(sectionTitle('Arrival shape', 'question 1 · does a new person arrive alone?', badgeFor('arrival'), 'q-arrival'));
+    wrap.appendChild(safe(arrivalSection, 'Arrival shape'));
+
+    wrap.appendChild(sectionTitle('Invite loop', 'question 2 · where does it leak?', badgeFor('invite_loop'), 'q-invite'));
+    wrap.appendChild(safe(inviteLoopSection, 'Invite loop'));
+
+    wrap.appendChild(sectionTitle('What we shipped', 'question 3 · adoption per feature, worst first', badgeFor('features'), 'q-shipped'));
+    wrap.appendChild(safe(featuresSection, 'What we shipped'));
+
+    wrap.appendChild(sectionTitle('Social depth', 'question 4 · broad, or carried by one person?', badgeFor('social_depth'), 'q-social'));
+    wrap.appendChild(safe(socialDepthSection, 'Social depth'));
+
+    wrap.appendChild(sectionTitle('Streak health', 'question 5 · are the flames alive?', badgeFor('streaks'), 'q-streaks'));
+    wrap.appendChild(safe(streaksSection, 'Streak health'));
+
+    wrap.appendChild(sectionTitle('Proof', 'question 6 · is a check-in trusted, and if not, why?', badgeFor('verification'), 'q-proof'));
+    wrap.appendChild(safe(verificationSection, 'Proof'));
+
+    wrap.appendChild(sectionTitle('Notifications', 'question 7 · what we send, and who can receive it', badgeFor('notifications'), 'q-notify'));
+    wrap.appendChild(safe(notificationsSection, 'Notifications'));
+
+    wrap.appendChild(sectionTitle('Compliance gate', 'question 8 · terms + date of birth, for the Play UGC requirement', badgeFor('compliance'), 'q-comply'));
+    wrap.appendChild(safe(complianceSection, 'Compliance gate'));
+
+    // ——— THE SERIES: volume over time. No verdicts live down here. ————————
+    wrap.appendChild(tierTitle('The series', 'volume over time · filtered by the control bar'));
+
     wrap.appendChild(sectionTitle('This period', rangeLabel(cur)+' · compared with the '+(prev.length||0)+' days before'));
     wrap.appendChild(kpis(cur, prev));
-
-    wrap.appendChild(sectionTitle('Stickiness', 'unique openers — daily / weekly / monthly · DAU÷WAU'));
-    wrap.appendChild(stickiness());
 
     wrap.appendChild(sectionTitle('Trend', 'pick a metric · '+(state.compare?'previous period overlaid':'toggle Compare to overlay the previous period')));
     wrap.appendChild(trendPanel(cur, prev));
 
+    wrap.appendChild(sectionTitle('Newer signals', 'what the recent releases produce · totals for '+rangeLabel(cur)));
+    wrap.appendChild(safe(function(){return sparksStrip(cur, prev);}, 'Newer signals'));
+
     wrap.appendChild(sectionTitle('Day-by-day', (state.gran==='week'?'by week':'by day')+' · newest first · arrow = change vs the '+(state.gran==='week'?'previous week':'previous day')));
     wrap.appendChild(dayTable(cur));
 
-    wrap.appendChild(sectionTitle('When people work out', 'check-ins by time of day & weekday · last 90 days ('+RAW.tz+')'));
-    wrap.appendChild(patternPanels());
+    // ——— REFERENCE: stable background numbers. Check when something looks odd. ———
+    wrap.appendChild(tierTitle('Reference & operations', 'background numbers · nothing here needs a decision today'));
 
-    wrap.appendChild(sectionTitle('Reactions & funnel', 'top reactions (90d) · signup → activation'));
-    wrap.appendChild(reactionsFunnel());
-
-    wrap.appendChild(sectionTitle('Reach', 'how far the invite loop carries · all-time'));
-    wrap.appendChild(reachFunnel());
+    wrap.appendChild(sectionTitle('Habit', 'unique openers — daily / weekly / monthly · DAU÷WAU'));
+    wrap.appendChild(stickiness());
 
     wrap.appendChild(sectionTitle('Retention & all-time', 'weekly return rate · lifetime totals'));
     wrap.appendChild(retentionAllTime());
     wrap.appendChild(retentionCurve());
+
+    wrap.appendChild(sectionTitle('When people work out', 'check-ins by time of day & weekday · last 90 days ('+RAW.tz+')'));
+    wrap.appendChild(patternPanels());
 
     wrap.appendChild(sectionTitle('Platform', 'unique users by device · all-time · 7-day-active in the sub'));
     wrap.appendChild(platformSplit());
@@ -332,8 +578,10 @@
     wrap.appendChild(sectionTitle('Capacity & limits', 'backend usage vs the Free-plan ceilings'));
     wrap.appendChild(capacityPanel());
 
-    wrap.appendChild(h('<div class="foot">First-party analytics · aggregate only, no personal data leaves the database · week & day boundaries use '+esc(RAW.tz)+
-      '.<br/>Key metric = each week, verified workouts by users who have at least one friend. Auto-refreshes every 5 minutes.</div>'));
+    wrap.appendChild(h('<div class="foot">First-party analytics · aggregate only, no personal data leaves the database · week &amp; day boundaries use '+esc(RAW.tz)+
+      '.<br/>Key metric = each week, verified workouts by users who have at least one friend. Auto-refreshes every 5 minutes.'+
+      '<br/>Rates on a base under '+MIN_BASE+' are printed as a raw fraction, never as a percentage. Panels marked “not yet reported” are waiting on the '+
+      'analytics snapshot update and fill in by themselves.</div>'));
 
     app.appendChild(wrap);
     // draw the chart after layout so widths are known
@@ -420,8 +668,9 @@
     '</div>');
   }
 
-  function sectionTitle(t, hint){
-    return h('<div class="sec anim"><h2>'+esc(t)+'</h2><span class="hint">'+esc(hint||'')+'</span></div>');
+  function sectionTitle(t, hint, badge, id){
+    return h('<div class="sec anim"'+(id? ' id="'+esc(id)+'"' : '')+'><h2>'+esc(t)+'</h2>'+
+      '<span class="hint">'+esc(hint||'')+'</span>'+(badge||'')+'</div>');
   }
 
   function kpiCard(label, valueHtml, sub){
@@ -443,7 +692,7 @@
 
   function trendPanel(cur, prev){
     var el=h('<div class="panel anim"></div>');
-    var chips='<div class="chips">'+METRICS.map(function(m){
+    var chips='<div class="chips">'+availableMetrics(RAW.daily).map(function(m){
       return '<button class="chip" data-m="'+m.key+'" aria-pressed="'+(state.metric===m.key)+'" style="color:'+m.color+'"><span class="sw"></span>'+esc(m.label)+'</button>';
     }).join('')+'</div>';
     el.innerHTML=chips+
@@ -546,6 +795,11 @@
     var rows=binRows(cur, state.gran).slice();      // ascending
     var el=h('<div class="tablewrap anim"></div>');
     var cols=[['checkins','Check-ins'],['verified','Verified'],['openers','Openers'],['active_users','Active'],['new_users','New'],['reactions','Reactions'],['nudges','Nudges']];
+    // Columns for the newer per-day series, added only once the SQL ships them —
+    // an absent key would fill the table with zeros that look like real zeros.
+    [['comments','Comments'],['invites','Invites'],['clicks','Clicks']].forEach(function(c){
+      if(dailyHasKey(RAW.daily, c[0])) cols.push(c);
+    });
     var thead='<thead><tr><th>'+(state.gran==='week'?'Week of':'Day')+'</th>'+cols.map(function(c){return '<th>'+c[1]+'</th>';}).join('')+'</tr></thead>';
     // build newest-first, arrow = vs the chronologically previous row
     var body='';
@@ -567,7 +821,7 @@
       var v=isAvg(c[0])? mean(cur,c[0]) : sum(cur,c[0]);
       return '<td>'+(isAvg(c[0])?fmt(v)+' avg':fmt(v))+'</td>';
     }).join('')+'</tr></tfoot>';
-    el.innerHTML='<table>'+thead+'<tbody>'+(body||'<tr><td colspan="7" style="text-align:center;color:var(--muted)">No data in range</td></tr>')+'</tbody>'+tfoot+'</table>';
+    el.innerHTML='<table>'+thead+'<tbody>'+(body||'<tr><td colspan="'+(cols.length+1)+'" style="text-align:center;color:var(--muted)">No data in range</td></tr>')+'</tbody>'+tfoot+'</table>';
     return el;
   }
 
@@ -594,33 +848,22 @@
     return el;
   }
 
-  function reactionsFunnel(){
-    var el=h('<div class="two anim"></div>');
-    // reactions
-    var em=(RAW.emoji||[]);
-    var emax=Math.max(1,Math.max.apply(null,em.map(function(x){return n(x.n);}).concat([0])));
-    var rHtml=em.length? em.map(function(x){
-      return '<div class="frow"><div class="fl"><span>'+esc(x.emoji)+'</span><span>'+n(x.n)+'</span></div><div class="ft"><div class="ff" style="width:'+Math.round(n(x.n)/emax*100)+'%"></div></div></div>';
-    }).join('') : '<div style="color:var(--muted);font-size:13px">No reactions yet.</div>';
-    var reactPanel='<div class="panel rowlist emoji-list"><div class="cl" style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:800;margin-bottom:12px">Top reactions (90d)</div>'+rHtml+'</div>';
-    // funnel
-    var f=RAW.funnel||{}; var base=Math.max(1,n(f.signed_up));
-    var steps=[['Signed up',n(f.signed_up)],['Added a friend',n(f.added_friend)],['First check-in',n(f.first_check_in)],['Activated',n(f.activated)]];
-    var fHtml=steps.map(function(s){var w=Math.round(s[1]/base*100);
-      return '<div class="frow"><div class="fl"><span>'+esc(s[0])+'</span><span>'+s[1]+' · '+w+'%</span></div><div class="ft"><div class="ff" style="width:'+w+'%"></div></div></div>';
-    }).join('');
-    var funnelPanel='<div class="panel rowlist"><div class="cl" style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:800;margin-bottom:12px">Activation funnel</div>'+fHtml+'</div>';
-    el.innerHTML=reactPanel+funnelPanel;
-    return el;
-  }
+  // (The old `reactionsFunnel` panel-pair was split up 2026-11-20: the activation
+  // funnel moved into Arrival shape — it is the arrival story — and the reaction
+  // leaderboard into Social depth. Nothing was dropped; see activationFunnelHtml()
+  // and topReactionsHtml().)
 
   function retentionAllTime(){
     var el=h('<div class="anim"></div>');
     var r=RAW.retention||{}, u=RAW.users||{}, tot=RAW.totals||{}, eng=RAW.engagement||{};
+    // The retention percentages come off signup cohorts whose size the snapshot
+    // does not report — so they go through softPctCard rather than printing as
+    // confident headline numbers. "Activated" DOES have an absolute (funnel), so
+    // it gets the full treatment.
     var cards='<div class="grid" style="margin-bottom:12px">'+
-      kpiCard('W1 retention', fmtPct(r.w1_pct), 'checked in in week +1')+
-      kpiCard('W2 retention', fmtPct(r.w2_pct), 'checked in in week +2')+
-      kpiCard('Activated', fmtPct((RAW.activation||{}).activated_pct), 'check-in + a friend')+
+      softPctCard('W1 retention', r.w1_pct, 'checked in in week +1 · cohort size not reported')+
+      softPctCard('W2 retention', r.w2_pct, 'checked in in week +2 · cohort size not reported')+
+      rateCard('Activated', n((RAW.funnel||{}).activated), n(tot.users), 'check-in + a friend')+
       kpiCard('Active (7d)', fmt(u.active_7d), 'distinct check-ins, last 7 days')+
       kpiCard('Unique openers (7d)', fmt(eng.openers_7d), 'distinct app opens, last 7 days')+
     '</div>';
@@ -635,6 +878,803 @@
       '<div><b>'+n(tot.friendships)+'</b>friend links</div>'+
     '</div>';
     el.innerHTML=cards+strip;
+    return el;
+  }
+
+  // ===================================================================
+  // v2 — THE EIGHT RANKED QUESTIONS (2026-11-20)
+  //
+  // Each section below is driven by ONE top-level snapshot key. The SQL that
+  // produces those keys ships separately and may land after this page, so every
+  // section checks `present()` first and renders a quiet, explained
+  // "not yet reported" panel instead of zeros, NaNs or an empty box.
+  // Feed this file the pre-v2 snapshot and nothing breaks: you get eight
+  // placeholders and the whole original dashboard.
+  //
+  // Every rate goes through `rate()` (see the honest-rate rule at the top):
+  // the absolute always travels with the percentage, and a base under
+  // MIN_BASE prints as a raw fraction rather than a confident percentage.
+  // ===================================================================
+  var V2_KEYS=[
+    ['arrival','Arrival shape','whether a new person arrives alone — and how much more a user with friends trains'],
+    ['invite_loop','Invite loop','every step from invite sent to first check-in, in absolute numbers'],
+    ['features','What we shipped','adoption per shipped feature, so a dead one is visible instead of assumed live'],
+    ['social_depth','Social depth','whether engagement is broad or carried by one person'],
+    ['streaks','Streak health','how many flames are alive, at risk, broken or paused'],
+    ['verification','Verification','the verified share of recent check-ins, and why the rest are not'],
+    ['notifications','Notifications','what we send, by type, and how many devices can receive it'],
+    ['compliance','Compliance gate','terms acceptance and date of birth, for the Play UGC requirement']
+  ];
+  function present(k){
+    var v=RAW? RAW[k] : null;
+    if(v==null) return false;
+    if(Array.isArray(v)) return v.length>0;
+    if(typeof v==='object') return Object.keys(v).length>0;
+    return true;
+  }
+  function badgeFor(k){return present(k)? '' : '<span class="badge">not yet reported</span>';}
+  function pendingHtml(k){
+    var what='this panel', i;
+    for(i=0;i<V2_KEYS.length;i++) if(V2_KEYS[i][0]===k) what=V2_KEYS[i][2];
+    return '<div class="pending">'+
+      '<div class="pl">Not yet reported</div>'+
+      '<div class="pb">This panel shows '+esc(what)+'.</div>'+
+      '<div class="pn">It is waiting on the <code>'+esc(k)+'</code> key from <code>analytics_snapshot()</code>. '+
+        'The page is already built for it and fills in by itself on the next refresh after the SQL ships.</div>'+
+    '</div>';
+  }
+  function verdictHtml(tone, html){
+    return '<div class="verdict'+(tone?' '+tone:'')+'"><span class="vd"></span><span>'+html+'</span></div>';
+  }
+  function stack(node){var d=h('<div class="stack"></div>');d.appendChild(node);return d;}
+
+  // SWITCHED-OFF FEATURES ARE NOT REPORTED ON (Charbel, 2026-11-20). Rep Calls
+  // (REP_CALLS_ENABLED=false, sunset 2026-11-17) and Rivalry + mocks
+  // (RIVALRY_ENABLED=false since 2026-07-05) can never produce new data, so a
+  // counter for them is noise at best and a phantom roadmap at worst. If the SQL
+  // ever ships a row for one, it is dropped here rather than displayed.
+  // NOTE: nudges are NOT in this list — still live, barely used (12 ever), and
+  // that number is exactly the kind of insight the feature table exists for.
+  var KILLED=/^(rep_?calls?|rivalry|mock)/i;
+  function alive(k){return !KILLED.test(String(k==null?'':k));}
+  function dropKilled(list, field){
+    return (Array.isArray(list)? list : []).filter(function(x){return alive(x && x[field]);});
+  }
+
+  // A section that throws must not take the page down with it — the snapshot
+  // shape is not under this file's control.
+  function safe(fn, label){
+    try{ return fn(); }
+    catch(e){
+      return h('<div class="pending anim"><div class="pl">Could not render</div>'+
+        '<div class="pb">'+esc(label)+' hit an error while rendering: '+esc(String((e&&e.message)||e))+'</div>'+
+        '<div class="pn">The rest of the page is unaffected. This almost always means the snapshot shipped a shape '+
+        'this panel did not expect.</div></div>');
+    }
+  }
+
+  // The eight ranked questions, in priority order. `v` is the verdict builder —
+  // the same one the section renders, so the briefing at the top of the page and
+  // the section itself can never disagree.
+  var QUESTIONS=[
+    {id:'q-arrival', key:'arrival',       name:'Arrival shape',   v:vArrival},
+    {id:'q-invite',  key:'invite_loop',   name:'Invite loop',     v:vInvite},
+    {id:'q-shipped', key:'features',      name:'What we shipped', v:vFeatures},
+    {id:'q-social',  key:'social_depth',  name:'Social depth',    v:vSocial},
+    {id:'q-streaks', key:'streaks',       name:'Streak health',   v:vStreaks},
+    {id:'q-proof',   key:'verification',  name:'Proof',           v:vVerify},
+    {id:'q-notify',  key:'notifications', name:'Notifications',   v:vNotify},
+    {id:'q-comply',  key:'compliance',    name:'Compliance gate', v:vCompliance}
+  ];
+
+  // THE BRIEFING. One screen that says what is broken, ranked, each row jumping
+  // to the evidence. Everything in it is computed from the verdict builders.
+  function briefing(){
+    var flagged=[], okNames=[], quiet=[], pending=[];
+    QUESTIONS.forEach(function(q){
+      if(!present(q.key)){ pending.push(q.name); return; }
+      var v=null; try{ v=q.v(); }catch(e){ v=null; }
+      if(!v){ pending.push(q.name); return; }
+      if(v.tone==='bad'||v.tone==='warn') flagged.push({q:q,v:v});
+      else if(v.tone==='idle') quiet.push(q.name);       // measurable, but no data in the window
+      else okNames.push(q.name);
+    });
+    flagged.sort(function(a,b){return (a.v.tone==='bad'?0:1)-(b.v.tone==='bad'?0:1);});
+
+    var rows=flagged.map(function(f){
+      return '<a class="brow '+f.v.tone+'" href="#'+f.q.id+'">'+
+        '<span class="bdot"></span>'+
+        '<span><span class="bname">'+esc(f.q.name)+'</span> — '+esc(f.v.head)+'</span>'+
+        '<span class="bgo" aria-hidden="true">›</span></a>';
+    }).join('');
+
+    if(!rows){
+      rows='<div class="brow" style="border-bottom:0"><span class="bdot" style="background:var(--green)"></span><span>'+
+        ((okNames.length||quiet.length)
+          ? 'Nothing is flagged — every question that can be read right now reads healthy.'
+          : 'Nothing measurable has arrived yet; the eight panels below are waiting on the analytics update.')+
+        '</span></div>';
+    }
+    var foot=[];
+    if(okNames.length) foot.push('Reads healthy: '+esc(okNames.join(', '))+'.');
+    if(quiet.length)   foot.push('Nothing to read yet: '+esc(quiet.join(', '))+'.');
+    if(pending.length) foot.push(pending.length+' not yet reported: '+esc(pending.join(', '))+'.');
+    return h('<div class="brief anim">'+
+      '<div class="ptitle">What needs attention</div>'+rows+
+      (foot.length? '<div class="bfoot">'+foot.join(' ')+'</div>' : '')+
+    '</div>');
+  }
+
+  function tierTitle(t, note){
+    return h('<div class="tier anim"><h3>'+esc(t)+'</h3><span class="ln"></span>'+
+      (note? '<span class="tn">'+esc(note)+'</span>' : '')+'</div>');
+  }
+
+  // ——— card variants that obey the honest-rate rule ————————————————
+  // rateCard: the RATE is the headline (share questions).
+  function rateCard(label, num, den, note){
+    var r=rate(num,den);
+    var val=r.ok? esc(r.text) : '<span class="thin">'+esc(r.text)+'</span>';
+    var sub='<span class="'+(r.ok?'base':'warnbase')+'">'+esc(r.base)+'</span>'+(note?' · '+esc(note):'');
+    return kpiCard(label,val,sub);
+  }
+  // shareCard: the COUNT is the headline, the rate rides along underneath.
+  function shareCard(label, num, den, note){
+    var r=rate(num,den);
+    var sub=r.ok? '<span class="base">'+r.text+' of '+fmt(den)+'</span>' : '<span class="warnbase">'+esc(r.base)+'</span>';
+    return kpiCard(label, fmt(num), sub+(note?' · '+esc(note):''));
+  }
+  // pctCard: the snapshot sends a RATE with no count. We print the rate, name
+  // the base, and mark the derived count with ≈ so it is never read as measured.
+  function pctCard(label, pct, den, note){
+    pct=n(pct); den=n(den);
+    var tail=note? ' · '+esc(note) : '';
+    if(den<=0) return kpiCard(label,'<span class="thin">—</span>','<span class="warnbase">no base to measure against</span>'+tail);
+    if(den<MIN_BASE) return kpiCard(label,'<span class="thin">≈'+Math.round(pct/100*den)+' of '+fmt(den)+'</span>',
+      '<span class="warnbase">base of '+fmt(den)+' — too small for a percentage</span>'+tail);
+    return kpiCard(label, fmt(pct)+'%', '<span class="base">≈'+Math.round(pct/100*den)+' of '+fmt(den)+'</span>'+tail);
+  }
+  // softPctCard: a rate whose base the snapshot never reports. De-emphasised on
+  // purpose — an unbacked percentage does not get headline weight on this page.
+  function softPctCard(label, pct, why){
+    return kpiCard(label,'<span class="thin">'+fmt(n(pct))+'%</span>',
+      '<span class="warnbase">no absolute base reported</span>'+(why?' · '+esc(why):''));
+  }
+  function durCard(label, hrs, sub){
+    var t=fmtDur(hrs);
+    return t? kpiCard(label, esc(t), sub? '<span class="base">'+esc(sub)+'</span>' : '')
+            : kpiCard(label, '<span class="thin">—</span>', '<span class="warnbase">not reported yet</span>');
+  }
+
+  // ——— chart primitives ————————————————————————————————————————————
+  // Vertical bars in the page's existing .bars idiom. Deliberately CSS text and
+  // not SVG text: an SVG label scales with the chart and goes to ~5px on a phone.
+  // Bars capped at 72% of the box so the value/label rows never squeeze them.
+  function barsHtml(items, cls, gold){
+    var max=0; items.forEach(function(x){max=Math.max(max,n(x.v));}); if(max<=0) max=1;
+    var thinLabels=items.length>12;
+    return '<div class="bars '+(cls||'')+'">'+items.map(function(x,i){
+      var hpct=Math.max(2, Math.round(n(x.v)/max*72));
+      return '<div class="bar">'+
+        '<div class="bv">'+esc(x.vl!=null? x.vl : fmt(x.v))+'</div>'+
+        '<div class="fill'+(x.thin?' thinbar':'')+(gold?' gold':'')+'" style="height:'+hpct+'%"></div>'+
+        '<div class="bl">'+esc((thinLabels && i%2)? '' : x.l)+'</div>'+
+        (x.sl? '<div class="bn">'+esc(x.sl)+'</div>' : '')+
+      '</div>';
+    }).join('')+'</div>';
+  }
+  // Proportion bar. The legend carries ABSOLUTES, not shares.
+  function splitHtml(parts){
+    var tot=0; parts.forEach(function(p){tot+=Math.max(0,n(p.v));});
+    if(tot<=0) return '';
+    return '<div class="split">'+parts.map(function(p){
+        var w=Math.max(0,n(p.v))/tot*100;
+        return w>0? '<div style="width:'+w.toFixed(1)+'%;background:'+p.c+'"></div>' : '';
+      }).join('')+'</div>'+
+      '<div class="splitleg">'+parts.map(function(p){
+        return '<span><i style="background:'+p.c+'"></i>'+esc(p.l)+' '+fmt(p.v)+'</span>';
+      }).join('')+'</div>';
+  }
+  // Horizontal ranked rows (reasons, notification types) in the .rowlist idiom.
+  function rowBars(items){
+    var max=1; items.forEach(function(x){max=Math.max(max,n(x.v));});
+    return items.map(function(x){
+      return '<div class="frow"><div class="fl"><span>'+esc(x.l)+'</span>'+
+        '<span>'+fmt(x.v)+(x.sub? ' · '+esc(x.sub):'')+'</span></div>'+
+        '<div class="ft"><div class="ff" style="width:'+Math.round(n(x.v)/max*100)+'%"></div></div></div>';
+    }).join('');
+  }
+  // Inline sparkline. No text inside the SVG, so scaling it to any width is safe.
+  function sparkSvg(vals, color){
+    if(!vals || !vals.length) return '';
+    var W=100,H=28,max=0,i,d='';
+    for(i=0;i<vals.length;i++) max=Math.max(max,n(vals[i]));
+    if(max<=0) max=1;
+    for(i=0;i<vals.length;i++){
+      var x=(vals.length<=1)? W/2 : i*(W/(vals.length-1));
+      var y=H-1-(H-2)*(n(vals[i])/max);
+      d+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1)+' ';
+    }
+    return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" aria-hidden="true">'+
+      '<path d="'+d.trim()+'" fill="none" stroke="'+color+'" stroke-width="1.6" stroke-linejoin="round" '+
+      'stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>';
+  }
+  // Funnel: step, then the conversion INTO the next step. The leaking step is
+  // called out in words as well as colour, and gets an outlined empty track.
+  function funnelHtml(title, steps, note){
+    var base=Math.max(1, n(steps[0].v));
+    var leak=leakIndex(steps);
+    var out='<div class="panel fun"><div class="ptitle">'+esc(title)+'</div>';
+    for(var i=0;i<steps.length;i++){
+      if(i>0){
+        var p=n(steps[i-1].v), c=n(steps[i].v), isLeak=(i===leak), txt;
+        if(p<=0) txt='nothing reached this step';
+        else if(c<=0) txt='<b>leak</b> 0 of '+fmt(p)+' got through';
+        else {
+          var r=rate(c,p);
+          txt=(r.ok? r.text+' got through · '+esc(r.base) : esc(r.text)+' got through — base too small to rate');
+          if(isLeak) txt='<b>biggest drop</b> '+txt;
+        }
+        out+='<div class="conv'+(isLeak?' leak':'')+'"><span class="ar">↓</span>'+txt+'</div>';
+      }
+      var v=n(steps[i].v), w=Math.round(v/base*100);
+      out+='<div class="step"><span class="sl">'+esc(steps[i].l)+'</span><b>'+fmt(v)+'</b></div>'+
+        '<div class="trk'+((i===leak && v<=0)?' out':'')+'">'+(w>0? '<div class="fl2" style="width:'+Math.max(1,w)+'%"></div>':'')+'</div>';
+    }
+    if(note) out+='<div class="subnote">'+esc(note)+'</div>';
+    return out+'</div>';
+  }
+
+  // ——— Q1 · ARRIVAL SHAPE ——————————————————————————————————————————
+  // The activation problem, measured 2026-11-14: 29 of 70 arrived alone and
+  // never asked anyone, and friends CAUSE check-ins (9 → 65 within-user).
+  function vArrival(){
+    if(!present('arrival')) return null;
+    var a=RAW.arrival, users=n((RAW.totals||{}).users);
+    var alone=n(a.alone_30d), withf=n(a.with_friend_30d), base=alone+withf;
+    var never=n(a.never_added_anyone);
+    var sq=Array.isArray(a.by_squad)? a.by_squad : [];
+    var zero=null, best=null;
+    sq.forEach(function(b){
+      if(String(b.squad)==='0') zero=b;
+      if(n(b.users)>0 && (!best || n(b.checkins_per_user)>n(best.checkins_per_user))) best=b;
+    });
+    var ar=rate(alone, base), tone, head, say;
+    if(base<=0){
+      tone='idle';
+      head='no arrivals in the last 30 days';
+      say='Nobody arrived in the last 30 days, so there is no arrival shape to read.';
+      if(users>0) say+=' All time, <b>'+fmt(never)+' of '+fmt(users)+'</b> users have never added a single friend.';
+    } else {
+      tone=(ar.pct>=50)?'bad':(ar.pct>=25)?'warn':'ok';
+      head=(ar.ok? ar.text+' of recent arrivals' : ar.text+' recent arrivals')+' came in alone';
+      say=ar.ok
+        ? '<b>'+ar.text+' of the people who arrived in the last 30 days arrived alone</b> ('+esc(ar.base)+').'
+        : '<b>'+esc(ar.text)+' recent arrivals came in alone</b> — too few arrivals to put a percentage on.';
+      if(users>0) say+=' All time, '+fmt(never)+' of '+fmt(users)+' users have never added anyone.';
+    }
+    if(zero && best && best!==zero && n(best.checkins_per_user)>0){
+      say+=' A user with '+esc(String(best.squad))+' friends averages <b>'+fmt(best.checkins_per_user)+
+        '</b> check-ins against '+fmt(zero.checkins_per_user)+' for a user with none — friends are what cause check-ins, '+
+        'so an arrival with nobody to show up for is the whole activation problem.';
+    }
+    return {tone:tone, head:head, html:say,
+      d:{a:a, users:users, alone:alone, withf:withf, base:base, never:never, sq:sq}};
+  }
+  function arrivalSection(){
+    var el=h('<div class="anim"></div>');
+    var v=vArrival();
+    // Without the new key the activation funnel still belongs here — it is built
+    // from `funnel`, which the snapshot has always carried.
+    if(!v){
+      el.innerHTML=pendingHtml('arrival')+'<div class="stack">'+activationFunnelHtml()+'</div>';
+      return el;
+    }
+    var d=v.d, squad;
+    if(d.sq.length){
+      var items=d.sq.map(function(b){
+        var u=n(b.users);
+        return {l:String(b.squad==null?'?':b.squad), v:n(b.checkins_per_user), vl:fmt(b.checkins_per_user),
+                sl:plural(u,'user','users'), thin:u<MIN_BASE};
+      });
+      squad='<div class="panel"><div class="ptitle">Check-ins per user, by squad size</div>'+
+        barsHtml(items,'tall')+
+        '<div class="subnote">Each bar is one friend-count bucket; the number under it is how many users are in it. '+
+        'Hatched bars sit on fewer than '+MIN_BASE+' users — read them as a direction, not a number.</div></div>';
+    } else {
+      squad='<div class="panel"><div class="ptitle">Check-ins per user, by squad size</div>'+
+        '<div class="subnote">The squad-size breakdown (<code>arrival.by_squad</code>) is not in this snapshot yet.</div></div>';
+    }
+    el.innerHTML=verdictHtml(v.tone,v.html)+
+      '<div class="grid">'+
+        rateCard('Arrived alone · 30d', d.alone, d.base)+
+        rateCard('Arrived with a friend · 30d', d.withf, d.base)+
+        shareCard('Never added anyone', d.never, d.users, 'all time')+
+        durCard('To first friend', d.a.median_hours_to_first_friend, 'median, from signup')+
+        durCard('To first check-in', d.a.median_hours_to_first_checkin, 'median, from signup')+
+      '</div>'+
+      '<div class="two stack">'+activationFunnelHtml()+squad+'</div>';
+    return el;
+  }
+
+  // The signup → activation funnel, all time. Lives here because it IS the
+  // arrival story (it used to sit next to the emoji leaderboard, which answered
+  // a different question). Same four numbers as before, plus the drop between them.
+  function activationFunnelHtml(){
+    var f=RAW.funnel||{};
+    return funnelHtml('Signup to activated · all time', [
+      {l:'Signed up',      v:n(f.signed_up)},
+      {l:'Added a friend', v:n(f.added_friend)},
+      {l:'First check-in', v:n(f.first_check_in)},
+      {l:'Activated',      v:n(f.activated)}
+    ], 'Activated = has a friend AND has checked in. The order of the middle two steps is not causal; friending and '+
+       'first check-in can happen either way round.');
+  }
+
+  // ——— Q2 · INVITE LOOP ————————————————————————————————————————————
+  function vInvite(){
+    if(!present('invite_loop')) return null;
+    var il=RAW.invite_loop, at=il.all_time||{}, tot=RAW.totals||{};
+    var steps=[
+      {l:'Invite sent',     v:n(il.sent_30d)},
+      {l:'Link clicked',    v:n(il.clicks_30d)},
+      {l:'Signed up',       v:n(il.signups_30d)},
+      {l:'Connected to the inviter', v:n(il.connected_30d)},
+      {l:'First check-in',  v:n(il.first_checkin_30d)}
+    ];
+    var ats=n(at.sent), atk=n(at.clicks), atc=n(at.connects), fr=n(tot.friendships);
+    var leak=leakIndex(steps), tone, head, say;
+
+    if(atk>0 && atc<=0){
+      tone='bad';
+      head='the link has never connected one person — '+fmt(atk)+' clicks, 0 connections';
+      say='<b>The invite link has never connected one person.</b> '+fmt(ats)+' invites produced '+fmt(atk)+
+          ' clicks and 0 connections, all time.';
+      if(fr>0) say+=' There are '+fmt(fr)+' friend links on the app, so every friendship was made another way — '+
+        'by username or contacts. The link is the broken path, not friending itself.';
+    } else if(steps[0].v<=0){
+      tone='idle';
+      head='no invites sent in the last 30 days';
+      say='No invites went out in the last 30 days, so the loop has nothing to leak. '+
+        (ats>0? 'All time: '+fmt(ats)+' sent, '+fmt(atk)+' clicked, '+fmt(atc)+' connected.' : 'Nothing has ever been sent.');
+    } else if(leak>0){
+      var L=steps[leak], lr=rate(L.v, steps[leak-1].v);
+      tone=(L.v<=0)?'bad':'warn';
+      head='leaks hardest at “'+L.l+'” — '+lr.base+' got through';
+      say='<b>The loop leaks hardest at “'+esc(L.l)+'”</b> — '+esc(lr.base)+' got through'+(lr.ok? ' ('+lr.text+')':'')+'. '+
+          'End to end, '+fmt(steps[4].v)+' of '+fmt(steps[0].v)+' invites reached a first check-in.';
+    } else {
+      tone='ok';
+      head=fmt(steps[4].v)+' of '+fmt(steps[0].v)+' invites reached a first check-in';
+      say='Nothing drops between the steps: '+fmt(steps[4].v)+' of '+fmt(steps[0].v)+' invites reached a first check-in.';
+    }
+    return {tone:tone, head:head, html:say, d:{steps:steps, ats:ats, atk:atk, atc:atc, fr:fr}};
+  }
+  function inviteLoopSection(){
+    var el=h('<div class="anim"></div>');
+    var v=vInvite();
+    // Without the new key, the legacy all-time reach panel is the only invite
+    // data there is — so it carries the section on its own.
+    if(!v){
+      el.innerHTML=pendingHtml('invite_loop');
+      el.appendChild(stack(reachFunnel()));
+      return el;
+    }
+    var d=v.d, rc=RAW.reach||{};
+    // The legacy `reach` panel repeats "invites sent", which the funnel above now
+    // owns. Its two OTHER numbers are kept as a strip rather than a second,
+    // possibly disagreeing funnel.
+    var legacy='';
+    if(present('reach')){
+      legacy='<div class="allstrip stack">'+
+        '<div><b>'+fmt(rc.friends_added)+'</b>friends added after an invite · all time</div>'+
+        '<div><b>'+fmt(rc.first_checkins)+'</b>of those then checked in</div>'+
+      '</div>';
+    }
+    el.innerHTML=verdictHtml(v.tone,v.html)+
+      '<div class="two">'+
+        funnelHtml('The last 30 days', d.steps,
+          'Each step counts people. “Connected to the inviter” means the new account ended up friends with whoever sent the invite.')+
+        funnelHtml('The link, all time', [
+          {l:'Invites sent', v:d.ats},{l:'Link clicked', v:d.atk},{l:'Connected', v:d.atc}
+        ], d.fr>0? ('For contrast, '+fmt(d.fr)+' friend links exist on the app — made by username or contacts rather than by a link.') : null)+
+      '</div>'+legacy;
+    return el;
+  }
+
+  // ——— Q3 · WHAT WE SHIPPED ————————————————————————————————————————
+  var FEAT_ORDER={dead:0,cold:1,thin:2,cooling:3,fresh:4,live:5};
+  var FEAT_PILL={dead:['dead','Dead'],cold:['cold','Stalled'],thin:['cold','One or two people'],
+                 cooling:['cold','Cooling'],fresh:['fresh','Just shipped'],live:['live','Live']};
+  function featureStatus(f){
+    if(f._u<=0) return 'dead';                               // shipped, never used by anyone
+    if(f._c<=0) return 'cold';                               // used once, nothing in 30 days
+    if(f._days!=null && f._days<14) return 'fresh';
+    if(f._u<3) return 'thin';
+    return (f._c>=f._p)? 'live' : 'cooling';
+  }
+  function vFeatures(){
+    if(!present('features')) return null;
+    var ci30=sum((RAW.daily||[]).slice(-30),'checkins');
+    // Switched-off features are dropped before anything is counted.
+    var rows=dropKilled(RAW.features,'key').map(function(f){
+      var o={key:f.key, label:f.label||f.key, shipped_on:f.shipped_on, attach_pct:f.attach_pct};
+      o._u=n(f.users_used); o._c=n(f.uses_30d); o._p=n(f.uses_prev_30d); o._days=daysSince(f.shipped_on);
+      o._st=featureStatus(o);
+      return o;
+    });
+    if(!rows.length) return null;
+    rows.sort(function(x,y){
+      var a=FEAT_ORDER[x._st], b=FEAT_ORDER[y._st];
+      if(a!==b) return a-b;
+      return y._c-x._c;
+    });
+    var dead=rows.filter(function(f){return f._st==='dead';});
+    var cold=rows.filter(function(f){return f._st==='cold';});
+    var tone, head, say;
+    if(dead.length){
+      tone='bad';
+      var oldest=dead.slice().sort(function(x,y){return n(y._days)-n(x._days);})[0];
+      head=dead.length+' of '+rows.length+' shipped features have never been used: '+
+           dead.map(function(f){return f.label;}).join(', ');
+      say='<b>'+dead.length+' of '+rows.length+' things we shipped have never been used once</b>: '+
+          esc(dead.map(function(f){return f.label;}).join(', '))+'.';
+      if(oldest && oldest._days!=null) say+=' '+esc(oldest.label)+' has been live '+plural(oldest._days,'day','days')+
+        ' with zero users — that is a feature nobody found, not a feature nobody wants.';
+    } else if(cold.length){
+      tone='warn';
+      head=cold.length+' features saw no use in the last 30 days: '+cold.map(function(f){return f.label;}).join(', ');
+      say='Everything has been used at least once, but <b>'+cold.length+' saw no use in the last 30 days</b>: '+
+          esc(cold.map(function(f){return f.label;}).join(', '))+'.';
+    } else {
+      tone='ok';
+      head='every shipped feature saw use in the last 30 days';
+      say='Every shipped feature saw use in the last 30 days.';
+    }
+    return {tone:tone, head:head, html:say, d:{rows:rows, ci30:ci30}};
+  }
+  function featuresSection(){
+    var el=h('<div class="anim"></div>');
+    var v=vFeatures();
+    if(!v){ el.innerHTML=pendingHtml('features'); return el; }
+    var users=n((RAW.totals||{}).users), rows=v.d.rows, ci30=v.d.ci30;
+
+    var body=rows.map(function(f){
+      var pill=FEAT_PILL[f._st]||['','—'], ur=rate(f._u, users), dd=f._c-f._p;
+      var arw=(dd===0)? '' : ' <span class="arw '+(dd>0?'up':'down')+'">'+(dd>0?'▲+':'▼')+fmt(dd)+'</span>';
+      var att='<span class="zero">—</span>';
+      if(typeof f.attach_pct==='number' && f.attach_pct>0){
+        att=(ci30>=MIN_BASE)
+          ? fmt(f.attach_pct)+'%<span class="tsub">'+fmt(f._c)+' of '+fmt(ci30)+' check-ins</span>'
+          : '<span class="zero">'+fmt(f._c)+' of '+fmt(ci30)+'</span>';
+      }
+      return '<tr'+(f._st==='dead'? ' class="deadrow"':'')+'>'+
+        '<td>'+esc(f.label)+'<span class="tsub">'+(f._days!=null? 'shipped '+plural(f._days,'day','days')+' ago' : 'ship date unknown')+'</span></td>'+
+        '<td>'+(f._u? fmt(f._u) : '<span class="zero">0</span>')+
+          '<span class="tsub">'+(ur.ok? ur.text+' of users' : 'of '+fmt(users)+' users')+'</span></td>'+
+        '<td>'+(f._c? fmt(f._c) : '<span class="zero">0</span>')+arw+'</td>'+
+        '<td>'+(f._p? fmt(f._p) : '<span class="zero">0</span>')+'</td>'+
+        '<td>'+att+'</td>'+
+        '<td class="lcell"><span class="sp '+pill[0]+'"><i></i>'+esc(pill[1])+'</span></td>'+
+      '</tr>';
+    }).join('');
+
+    el.innerHTML=verdictHtml(v.tone,v.html)+
+      '<div class="tablewrap"><table>'+
+        '<thead><tr><th>Feature</th><th>Users</th><th>Uses 30d</th><th>Prev 30d</th><th>Attach</th>'+
+        '<th style="text-align:left">Status</th></tr></thead><tbody>'+
+        (body||'<tr><td colspan="6" style="text-align:center;color:var(--muted)">No features reported.</td></tr>')+
+      '</tbody></table></div>'+
+      '<div class="subnote">Sorted worst first. Attach = the share of the last 30 days of check-ins that carried the feature, '+
+        'as reported by the snapshot; “—” where it does not apply. Status is computed here: Dead = nobody has ever used it · '+
+        'Stalled = used once, nothing in 30 days · Cooling = down on the previous 30 days. '+
+        'Features switched off in the app are excluded — they cannot produce new data.</div>';
+    return el;
+  }
+
+  // ——— Q4 · SOCIAL DEPTH ———————————————————————————————————————————
+  function vSocial(){
+    if(!present('social_depth')) return null;
+    var s=RAW.social_depth;
+    var giv=n(s.givers_7d), rec=n(s.receivers_7d), top=n(s.top_giver_share_pct);
+    var rpp=n(s.reactions_per_post), cpp=n(s.comments_per_post);
+    var tone, head, say;
+    if(giv<=0 && rec<=0){
+      tone='idle'; head='nobody gave or received anything this week';
+      say='Nobody gave or received a reaction in the last 7 days, so there is no depth to read.';
+    } else if(giv<3){
+      tone='warn';
+      head='only '+plural(giv,'person','people')+' gave anything this week';
+      say='<b>'+plural(giv,'person','people')+' gave anything in the last 7 days</b> — far too few to call engagement '+
+          'broad or narrow. Read everything below as directional.';
+    } else if(top>=50){
+      tone='bad';
+      head='one person is '+fmt(top)+'% of everything given this week';
+      say='<b>One person is '+fmt(top)+'% of everything given this week.</b> '+fmt(giv)+' people gave, '+fmt(rec)+
+          ' received — engagement is carried, not broad.';
+    } else {
+      tone='ok';
+      head=fmt(giv)+' people gave, '+fmt(rec)+' received';
+      say='<b>'+fmt(giv)+' people gave something this week</b> and '+fmt(rec)+' received it; the biggest single giver is '+
+          fmt(top)+'% of the total.';
+    }
+    if(rpp>0 || cpp>0) say+=' Per post it is '+fmt(rpp)+' reactions against '+fmt(cpp)+
+      ' comments — people tap far more readily than they type.';
+    return {tone:tone, head:head, html:say, d:{s:s, giv:giv, rec:rec, top:top, rpp:rpp, cpp:cpp}};
+  }
+  function socialDepthSection(){
+    var el=h('<div class="anim"></div>');
+    var v=vSocial();
+    // The reaction leaderboard runs off `emoji`, which the snapshot already has,
+    // so it shows even while social_depth is pending.
+    if(!v){
+      el.innerHTML=pendingHtml('social_depth')+'<div class="stack">'+topReactionsHtml()+'</div>';
+      return el;
+    }
+    var d=v.d, s=d.s, tot=RAW.totals||{};
+    var posts=n(tot.checkins), reacts=n(tot.reactions);
+    var bars=(d.giv>0||d.rec>0)
+      ? '<div class="panel"><div class="ptitle">Who gives versus who only receives · 7d</div>'+
+        barsHtml([{l:'Gave',v:d.giv,sl:'people'},{l:'Received',v:d.rec,sl:'people'}],'')+
+        '<div class="subnote">A healthy feed has these two close together. A tall “received” next to a short “gave” '+
+        'means a few people are carrying everyone else’s motivation.</div></div>'
+      : '<div class="panel"><div class="ptitle">Who gives versus who only receives · 7d</div>'+
+        '<div class="subnote">Nobody gave or received anything in the last 7 days.</div></div>';
+
+    el.innerHTML=verdictHtml(v.tone,v.html)+
+      '<div class="grid">'+
+        pctCard('Posts with a reaction', s.posts_with_reaction_pct, posts, 'all-time posts')+
+        pctCard('Posts with a comment', s.posts_with_comment_pct, posts, 'all-time posts')+
+        kpiCard('Reactions per post', fmt(d.rpp), reacts>0? '<span class="base">'+fmt(reacts)+' reactions all time</span>' : 'average across all posts')+
+        kpiCard('Comments per post', fmt(d.cpp), 'average across all posts')+
+        shareCard('Gave something · 7d', d.giv, n(tot.users), 'of the user base')+
+        softPctCard('Top giver’s share', d.top, 'base = everything given in the last 7 days by '+fmt(d.giv)+' people')+
+      '</div>'+
+      '<div class="two stack">'+bars+topReactionsHtml()+'</div>'+
+      '<div class="subnote">“≈” counts are derived from the reported rate and the all-time post count — the snapshot sends '+
+      'the percentage, not the underlying count.</div>';
+    return el;
+  }
+  // The reaction leaderboard, moved here from its old slot beside the activation
+  // funnel: it is a social-depth detail (which reaction people reach for), not a
+  // funnel. Same data, same 90-day window.
+  function topReactionsHtml(){
+    var em=(RAW.emoji||[]);
+    return '<div class="panel rowlist emoji-list"><div class="ptitle">Which reaction people reach for · 90d</div>'+
+      (em.length? rowBars(em.map(function(x){return {l:String(x.emoji||'?'), v:n(x.n)};}))
+                : '<div class="subnote">No reactions in the last 90 days.</div>')+
+    '</div>';
+  }
+
+  // ——— Q5 · STREAK HEALTH ——————————————————————————————————————————
+  function vStreaks(){
+    if(!present('streaks')) return null;
+    var s=RAW.streaks, users=n((RAW.totals||{}).users);
+    var alive=n(s.alive), risk=n(s.at_risk), broke=n(s.broken_7d), vac=n(s.on_vacation);
+    var tone, head, say;
+    if(alive+risk+vac<=0){
+      tone='bad';
+      head='not one flame is currently alive';
+      say='<b>Not one flame is currently alive.</b>'+(broke>0? ' '+plural(broke,'streak','streaks')+' broke in the last 7 days.':'');
+    } else if(risk>alive){
+      tone='warn';
+      head=fmt(risk)+' flames at risk against '+fmt(alive)+' alive';
+      say='<b>'+fmt(risk)+' flames are at risk against '+fmt(alive)+' comfortably alive</b> — most live streaks need one more '+
+          'workout this week.'+(broke>0? ' '+plural(broke,'streak','streaks')+' already broke in the last 7 days.':'')+' This is the week to nudge.';
+    } else {
+      tone='ok';
+      head=fmt(alive)+' flames alive, '+fmt(risk)+' at risk';
+      say='<b>'+fmt(alive)+' flames are alive</b> and '+fmt(risk)+' at risk'+(broke>0? ', '+fmt(broke)+' broke in the last 7 days':'')+
+          (vac>0? ', '+fmt(vac)+' paused on vacation':'')+'.';
+    }
+    var sr=rate(alive+risk, users);
+    if(users>=MIN_BASE) say+=' That is '+sr.text+' of the user base carrying a streak at all ('+esc(sr.base)+').';
+    return {tone:tone, head:head, html:say, d:{s:s, users:users, alive:alive, risk:risk, broke:broke, vac:vac}};
+  }
+  function streaksSection(){
+    var el=h('<div class="anim"></div>');
+    var v=vStreaks();
+    if(!v){ el.innerHTML=pendingHtml('streaks'); return el; }
+    var d=v.d, dist=Array.isArray(d.s.distribution)? d.s.distribution : [];
+    var distPanel;
+    if(dist.length){
+      var items=dist.map(function(x){return {l:fmt(x.weeks), v:n(x.users), vl:fmt(x.users), thin:false};});
+      distPanel='<div class="panel stack"><div class="ptitle">Streak length — users by weeks held</div>'+
+        barsHtml(items,'tall',true)+
+        '<div class="subnote">x-axis = consecutive weeks held. A wall at week 1 with nothing beyond it means the habit '+
+        'is not forming yet.</div></div>';
+    } else {
+      distPanel='<div class="panel stack"><div class="ptitle">Streak length — users by weeks held</div>'+
+        '<div class="subnote">The length breakdown (<code>streaks.distribution</code>) is not in this snapshot yet.</div></div>';
+    }
+    var comp=splitHtml([
+      {l:'Alive',v:d.alive,c:'var(--orange)'},
+      {l:'At risk',v:d.risk,c:'var(--gold)'},
+      {l:'On vacation',v:d.vac,c:'var(--edge)'}
+    ]);
+    el.innerHTML=verdictHtml(v.tone,v.html)+
+      '<div class="grid">'+
+        shareCard('Alive', d.alive, d.users, 'of all users')+
+        shareCard('At risk', d.risk, d.alive+d.risk, 'of live streaks')+
+        kpiCard('Broke · last 7 days', fmt(d.broke), d.broke>0? '<span class="base">flames that went out</span>' : 'none broke')+
+        shareCard('Paused on vacation', d.vac, d.users, 'deliberate, not a loss')+
+      '</div>'+
+      (comp? '<div class="allstrip" style="display:block">'+comp+'</div>' : '')+
+      distPanel;
+    return el;
+  }
+
+  // ——— Q6 · VERIFICATION ———————————————————————————————————————————
+  var REASON_LABEL={no_place:'No venue matched the GPS fix',too_far:'Too far from any known venue',
+    no_location:'Location was off or denied',below_bar:'Workout stayed below the effort bar',
+    no_media:'No photo or video attached',pending:'Still waiting on a fix',unknown:'Reason not recorded'};
+  // hasOwnProperty, not a bare lookup: these keys come from the database, and a
+  // row called "constructor" would otherwise resolve to a function.
+  function dictLabel(dict, k){
+    var s=String(k==null? '' : k);
+    return Object.prototype.hasOwnProperty.call(dict, s)? dict[s] : (s? s.replace(/_/g,' ') : 'unknown');
+  }
+  function reasonLabel(k){return dictLabel(REASON_LABEL, k);}
+  function vVerify(){
+    if(!present('verification')) return null;
+    var vk=RAW.verification;
+    var ci30=sum((RAW.daily||[]).slice(-30),'checkins');
+    var unv=n(vk.unverified_30d), ver=Math.max(0, ci30-unv);
+    var reasons=(Array.isArray(vk.reasons)? vk.reasons : []).slice().sort(function(a,b){return n(b.n)-n(a.n);});
+    var r=rate(ver, ci30), rep=n(vk.verified_pct_30d);
+    var tone, head, say;
+    if(ci30<=0){
+      tone='idle';
+      head='no check-ins in the last 30 days';
+      say='No check-ins in the last 30 days, so there is nothing to verify.'+
+          (rep>0? ' The snapshot still reports '+fmt(rep)+'% verified over its own window.' : '');
+    } else {
+      tone=(r.pct>=90)?'ok':(r.pct>=70)?'warn':'bad';
+      head=r.text+' of recent check-ins are verified';
+      say=r.ok? '<b>'+r.text+' of the last 30 days of check-ins are verified</b> ('+esc(r.base)+').'
+              : '<b>'+esc(r.text)+' of the last 30 days of check-ins are verified</b> — too few to put a percentage on.';
+      if(unv>0 && reasons.length) say+=' The main reason the rest are not: '+esc(reasonLabel(reasons[0].reason))+
+        ' ('+fmt(reasons[0].n)+' of '+fmt(unv)+').';
+      else if(unv>0) say+=' '+fmt(unv)+' are unverified and the snapshot does not say why.';
+      else say+=' Nothing went unverified.';
+    }
+    return {tone:tone, head:head, html:say, d:{ci30:ci30, unv:unv, ver:ver, reasons:reasons, r:r, rep:rep}};
+  }
+  function verificationSection(){
+    var el=h('<div class="anim"></div>');
+    var v=vVerify();
+    if(!v){ el.innerHTML=pendingHtml('verification'); return el; }
+    var d=v.d;
+    var drift=(d.ci30>0 && d.rep>0 && Math.abs(d.rep-n(d.r.pct))>5)
+      ? '<div class="subnote">The snapshot reports '+fmt(d.rep)+'% over its own 30-day window; this panel computes '+
+        Math.round(n(d.r.pct))+'% from the daily series. If they keep diverging, trust the snapshot and check the window.</div>' : '';
+    var rpanel=d.reasons.length
+      ? '<div class="panel rowlist stack"><div class="ptitle">Why a check-in stayed unverified · 30d</div>'+
+        rowBars(d.reasons.map(function(x){
+          var rr=rate(x.n, d.unv);
+          return {l:reasonLabel(x.reason), v:n(x.n), sub:rr.ok? rr.text+' of unverified' : null};
+        }))+'</div>'
+      : '<div class="panel stack"><div class="ptitle">Why a check-in stayed unverified</div>'+
+        '<div class="subnote">'+(d.unv>0? 'The reason breakdown (<code>verification.reasons</code>) is not in this snapshot yet.'
+                                        : 'Nothing to explain — no unverified check-ins in the window.')+'</div></div>';
+    el.innerHTML=verdictHtml(v.tone,v.html)+
+      '<div class="grid">'+
+        rateCard('Verified · last 30 days', d.ver, d.ci30)+
+        shareCard('Unverified · last 30 days', d.unv, d.ci30, 'of all check-ins')+
+        kpiCard('Check-ins measured', fmt(d.ci30), '<span class="base">last 30 days of the daily series</span>')+
+      '</div>'+drift+rpanel;
+    return el;
+  }
+
+  // ——— Q7 · NOTIFICATIONS ——————————————————————————————————————————
+  var NOTE_LABEL={reaction:'Reaction on your proof',comment:'Comment on your proof',friend_checkin:'A friend worked out',
+    nudge:'Nudge',friend_request:'Friend request',friend_accept:'Friend request accepted',streak_risk:'Streak at risk',
+    tag:'You were tagged',meal:'Meal posted',invite:'Invite',pr:'Personal record'};
+  function noteLabel(k){var s=dictLabel(NOTE_LABEL, k);return s==='unknown'? 'other' : s;}
+  function vNotify(){
+    if(!present('notifications')) return null;
+    var nt=RAW.notifications, users=n((RAW.totals||{}).users);
+    // Rep Call pushes are switched off; a row for one would be a phantom.
+    var types=dropKilled(nt.by_type_7d,'type').slice().sort(function(a,b){return n(b.n)-n(a.n);});
+    var sent=0; types.forEach(function(x){sent+=n(x.n);});
+    var tokens=n(nt.push_tokens), tr=rate(tokens, users);
+    var tone, head, say;
+    if(sent<=0){
+      tone='warn';
+      head='nothing was sent in the last 7 days';
+      say='<b>Nothing went out in the last 7 days.</b> '+(tokens>0? fmt(tokens)+' devices could have received it.' : 'No device is registered for push at all.');
+    } else {
+      tone=(tr.ok && tr.pct>=70)? 'ok' : 'warn';
+      head=fmt(sent)+' sent in 7 days · '+(tr.ok? tr.text+' of users reachable' : fmt(tokens)+' devices reachable')+
+           ' · taps not measured';
+      say='<b>'+fmt(sent)+' notifications went out in the last 7 days</b>'+
+          (types.length? ', led by '+esc(noteLabel(types[0].type))+' ('+fmt(types[0].n)+')' : '')+'. '+
+          (tr.ok? tr.text+' of users can receive a push ('+esc(tr.base)+').' : esc(tr.base)+' can receive a push.');
+    }
+    say+=' <b>Whether any of them get tapped is still not measured</b> — the snapshot sends volume, not opens, so the '+
+         'routing that shipped in 1.3.0 is still unproven.';
+    return {tone:tone, head:head, html:say, d:{nt:nt, users:users, types:types, sent:sent, tokens:tokens}};
+  }
+  function notificationsSection(){
+    var el=h('<div class="anim"></div>');
+    var v=vNotify();
+    if(!v){ el.innerHTML=pendingHtml('notifications'); return el; }
+    var d=v.d;
+    var tpanel=d.types.length
+      ? '<div class="panel rowlist stack"><div class="ptitle">What we sent · last 7 days</div>'+
+        rowBars(d.types.map(function(x){
+          var sr=rate(x.n, d.sent);
+          return {l:noteLabel(x.type), v:n(x.n), sub:sr.ok? sr.text+' of sends' : null};
+        }))+'</div>'
+      : '<div class="panel stack"><div class="ptitle">What we sent · last 7 days</div>'+
+        '<div class="subnote">The by-type breakdown (<code>notifications.by_type_7d</code>) is not in this snapshot yet.</div></div>';
+    el.innerHTML=verdictHtml(v.tone,v.html)+
+      '<div class="grid">'+
+        kpiCard('Sent · last 7 days', fmt(d.sent), d.types.length? '<span class="base">across '+plural(d.types.length,'type','types')+'</span>' : 'no breakdown reported')+
+        shareCard('Devices reachable', d.tokens, d.users, 'registered push tokens')+
+        softPctCard('Inbox left unread', d.nt.inbox_unread_pct, 'the snapshot sends the rate without a count')+
+      '</div>'+tpanel;
+    return el;
+  }
+
+  // ——— Q8 · COMPLIANCE —————————————————————————————————————————————
+  function vCompliance(){
+    if(!present('compliance')) return null;
+    var c=RAW.compliance, users=n((RAW.totals||{}).users);
+    var ta=n(c.terms_accepted), dob=n(c.dob_present), adult=n(c.adult_confirmed);
+    var r=rate(ta, users), tone, head, say;
+    if(users<=0){
+      tone='idle'; head='no accounts to measure'; say='No users on the app, so there is no gate to cover.';
+    } else if(n(r.pct)>=95){
+      tone='ok';
+      head=r.base+' accounts have accepted the terms';
+      say='<b>Covered.</b> '+esc(r.base)+' accounts have accepted the terms'+(dob>0? ' and '+fmt(dob)+' carry a date of birth':'')+'.';
+    } else {
+      tone='bad';
+      head=fmt(users-ta)+' of '+fmt(users)+' accounts have not accepted the terms';
+      say='<b>'+fmt(users-ta)+' of '+fmt(users)+' accounts have not accepted the current terms.</b> Play expects every account '+
+          'on a user-generated-content app to have accepted them and to carry a date of birth; '+fmt(dob)+' have one on file.';
+      if(ta<=5) say+=' A number this low usually means the gate only runs for new signups and older accounts were never asked.';
+    }
+    return {tone:tone, head:head, html:say, d:{users:users, ta:ta, dob:dob, adult:adult}};
+  }
+  function complianceSection(){
+    var el=h('<div class="anim"></div>');
+    var v=vCompliance();
+    if(!v){ el.innerHTML=pendingHtml('compliance'); return el; }
+    var d=v.d;
+    el.innerHTML=verdictHtml(v.tone,v.html)+
+      '<div class="grid">'+
+        rateCard('Terms accepted', d.ta, d.users)+
+        rateCard('Date of birth on file', d.dob, d.users)+
+        rateCard('Adult confirmed', d.adult, d.users)+
+      '</div>'+
+      '<div class="subnote">Base is every account on the app, seed rows excluded when “Real only” is on.</div>';
+    return el;
+  }
+
+  // ——— the newer per-day series ————————————————————————————————————
+  // daily[] gains meals / comments / tags / music / invites / clicks. An absent
+  // field would sum to a confident zero, so we only render what is actually there.
+  function sparksStrip(cur, prev){
+    var keys=NEW_DAILY.filter(function(k){return dailyHasKey(RAW.daily,k);});
+    if(!keys.length){
+      return h('<div class="pending anim">'+
+        '<div class="pl">Not yet reported</div>'+
+        '<div class="pb">Six newer per-day series — comments, meals, music, tags, invites and link clicks — are not in '+
+          'this snapshot yet.</div>'+
+        '<div class="pn">They appear here, as chips on the trend chart and as columns in the day-by-day table the moment '+
+          '<code>daily[]</code> carries them.</div></div>');
+    }
+    var el=h('<div class="sparks anim"></div>');
+    el.innerHTML=keys.map(function(k){
+      var m=metricByKey(k), c=sum(cur,k), p=sum(prev,k);
+      return '<div class="spark"><div class="sl">'+esc(m.label)+'</div>'+
+        '<div class="sv">'+fmt(c)+'</div>'+
+        '<div class="sd">'+deltaHtml(c,p)+'</div>'+
+        sparkSvg(cur.map(function(r){return n(r[k]);}), m.color)+
+      '</div>';
+    }).join('');
     return el;
   }
 
@@ -668,6 +1708,8 @@
   }
 
   // DAU / WAU / MAU (unique openers) + the DAU÷WAU stickiness ratio.
+  // The ratio now goes through the honest-rate rule: "30%" off a WAU of 7 was
+  // exactly the confident-percentage-on-a-tiny-base problem this page exists to stop.
   function stickiness(){
     var s=RAW.stickiness||{};
     var el=h('<div class="grid anim"></div>');
@@ -675,7 +1717,7 @@
       kpiCard('DAU', fmt(n(s.dau)), 'unique openers today')+
       kpiCard('WAU', fmt(n(s.wau)), 'unique openers · 7d')+
       kpiCard('MAU', fmt(n(s.mau)), 'unique openers · 30d')+
-      kpiCard('Stickiness', fmt(n(s.dau_wau_pct))+'%', 'DAU ÷ WAU · higher = more habitual');
+      rateCard('Stickiness', n(s.dau), n(s.wau), 'DAU ÷ WAU · higher = more habitual');
     return el;
   }
 
@@ -699,7 +1741,9 @@
       return '<div class="frow"><div class="fl"><span>Week +'+n(x.offset)+'</span><span>'+fmt(p)+'%</span></div><div class="ft"><div class="ff" style="width:'+Math.min(100,Math.max(0,p))+'%"></div></div></div>';
     }).join('') : '<div style="color:var(--muted);font-size:13px">Not enough cohort history yet.</div>';
     var el=h('<div class="panel rowlist anim" style="margin-top:12px"></div>');
-    el.innerHTML='<div class="cl" style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:800;margin-bottom:12px">Retention curve — % back N weeks after signup</div>'+body;
+    el.innerHTML='<div class="ptitle">Retention curve — % back N weeks after signup</div>'+body+
+      '<div class="subnote">The snapshot sends these as rates without the cohort sizes behind them. On a user base this '+
+      'small one or two people move a whole week, so read the shape, not the numbers.</div>';
     return el;
   }
 
